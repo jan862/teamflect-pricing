@@ -569,9 +569,9 @@
         <div class="field" id="termField">
           <span class="label">Agreement length</span>
           <div class="seg-group small" id="term">
-            <button type="button" class="seg active" data-value="1">1 yr</button>
+            <button type="button" class="seg" data-value="1">1 yr</button>
             <button type="button" class="seg" data-value="2">2 yrs</button>
-            <button type="button" class="seg" data-value="3">3 yrs</button>
+            <button type="button" class="seg active" data-value="3">3 yrs</button>
             <button type="button" class="seg" data-value="4">4 yrs</button>
             <button type="button" class="seg" data-value="5">5 yrs</button>
           </div>
@@ -716,8 +716,8 @@ const NONPROFIT_DISCOUNT = 0.15;
 
    Index by years (1..5). Year 1 is always 0 regardless of payment terms. */
 const MULTIYEAR_DISCOUNT = {
-  installments: { 1: 0.00, 2: 0.05, 3: 0.10, 4: 0.15, 5: 0.20 },
-  upfront:      { 1: 0.00, 2: 0.12, 3: 0.22, 4: 0.30, 5: 0.38 }
+  installments: { 1: 0.00, 2: 0.06, 3: 0.12, 4: 0.18, 5: 0.24 },
+  upfront:      { 1: 0.00, 2: 0.12, 3: 0.24, 4: 0.36, 5: 0.45 }
 };
 
 /* =========================================================================
@@ -727,7 +727,7 @@ const state = {
   modules: '1-2',
   plan: 'professional',
   billing: 'annual',     // 'annual' or 'monthly' — picks the rate card
-  termYears: 1,          // 1..5 — only meaningful when billing='annual'
+  termYears: 3,          // 1..5 — only meaningful when billing='annual'
   payment: 'installments', // 'installments' or 'upfront' — only matters for termYears > 1
   users: 100,
   country: 'US',
@@ -751,8 +751,8 @@ function volumeDiscount(users) {
 }
 
 function moduleDiscount(modules) {
-  if (modules === '1-2') return 0.10;
-  if (modules === '3-4') return 0.05;
+  if (modules === '1-2') return 0.20;
+  if (modules === '3-4') return 0.10;
   return 0;
 }
 
@@ -947,7 +947,7 @@ function render() {
 
     <div class="actions">
       <button class="btn" id="copyBtn">Copy quote</button>
-      <button class="btn primary" id="emailBtn">Email to customer</button>
+      <button class="btn primary" id="emailBtn">Email Jan for additional discount</button>
     </div>
   `;
 
@@ -958,52 +958,100 @@ function render() {
 /* =========================================================================
    SHARE HELPERS
    ========================================================================= */
-function quoteText(r) {
+
+/* Build the header line: "Essential plan for 100 users, 2 year agreement (annual installments)"
+   Adapts to monthly, 1-year, multi-year upfront, multi-year installments. */
+function quoteHeaderLine(r) {
   const planLabel = state.plan.charAt(0).toUpperCase() + state.plan.slice(1);
-  const modLabel = state.modules === 'full' ? 'Full platform' : state.modules + ' modules';
+  const usersStr  = fmtInt(r.users) + ' users';
 
-  let agreementLine;
   if (r.billing === 'monthly') {
-    agreementLine = 'Monthly · 1-month commitment';
-  } else if (r.termYears === 1) {
-    agreementLine = '1 year · annual billing';
-  } else {
-    agreementLine = `${r.termYears} years · ${r.payment === 'upfront' ? 'paid upfront' : 'annual installments'}`;
+    return `${planLabel} plan for ${usersStr}, monthly billing (no commitment)`;
+  }
+  if (r.termYears === 1) {
+    return `${planLabel} plan for ${usersStr}, 1 year agreement (annual billing)`;
+  }
+  const paymentLabel = r.payment === 'upfront' ? 'paid upfront' : 'annual installments';
+  return `${planLabel} plan for ${usersStr}, ${r.termYears} year agreement (${paymentLabel})`;
+}
+
+/* Build the math equation line:
+   "100 users x $9.35 x 36 months = $33,660 USD for 3 years ($11,220 USD/year) - 15.0% discounted"
+   Edge cases:
+     - Monthly: drop "for X years" and per-year suffix
+     - 1-year annual or upfront multi-year: drop per-year suffix (only one payment)
+     - Multi-year installments: include per-year breakdown */
+function quoteEquationLine(r) {
+  const usersStr   = fmtInt(r.users);
+  const priceStr   = '$' + fmt(r.effectivePerUserPerMonth);
+  const monthsStr  = r.months + (r.months === 1 ? ' month' : ' months');
+  const totalStr   = '$' + fmtInt(r.discountedTotal) + ' USD';
+  const discountStr = pct(r.totalDiscount) + ' discounted';
+
+  let suffix = '';
+  if (r.billing === 'annual') {
+    if (r.termYears === 1) {
+      suffix = ' for 1 year';
+    } else {
+      suffix = ` for ${r.termYears} years`;
+      if (r.payment === 'installments') {
+        suffix += ` ($${fmtInt(r.perYearAmount)} USD/year)`;
+      }
+    }
   }
 
-  let invoiceLines = '';
-  if (r.isMultiYearInstall) {
-    invoiceLines = `\nInvoice schedule:   ${r.termYears} × $${fmtInt(r.perYearAmount)}/year`;
-  }
+  return `${usersStr} users x ${priceStr} x ${monthsStr} = ${totalStr}${suffix} - ${discountStr}`;
+}
 
-  return `Teamflect — ${planLabel} Plan Quote
+/* Plain-text version of the quote (fallback for Notepad, terminals, plain-text email). */
+function quoteText(r) {
+  return `${quoteHeaderLine(r)}\n${quoteEquationLine(r)}`;
+}
 
-Modules:            ${modLabel}
-Plan:               ${planLabel}
-Users:              ${fmtInt(r.users)}
-Country:            ${r.countryName}
-Non-profit:         ${state.nonprofit ? 'Yes' : 'No'}
-Agreement:          ${agreementLine}
-
-List price:         $${fmt(r.listPerUser)} / user / month
-Effective price:    $${fmt(r.effectivePerUserPerMonth)} / user / month
-Total discount:     ${pct(r.totalDiscount)}
-
-List total:         $${fmtInt(r.listTotal)}
-Final total:        $${fmtInt(r.discountedTotal)}
-You save:           $${fmtInt(r.savings)}${invoiceLines}
-
-— Teamflect`;
+/* HTML version of the quote — header is <u>underlined</u>.
+   When pasted into Outlook/Word/Teams/Gmail rich editors, the underline renders.
+   Falls back to plain text in non-rich-text destinations. */
+function quoteHtml(r) {
+  // Escape any special characters defensively
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1a1a1a;">
+<u><b>${esc(quoteHeaderLine(r))}</b></u><br>
+${esc(quoteEquationLine(r))}
+</div>`;
 }
 
 function copyQuote(r) {
-  navigator.clipboard.writeText(quoteText(r)).then(showToast);
+  const plain = quoteText(r);
+  const html  = quoteHtml(r);
+
+  // Modern path: write both HTML and plain-text so rich editors get the underline,
+  // and plain-text destinations still get usable content.
+  if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+    const item = new ClipboardItem({
+      'text/html':  new Blob([html],  { type: 'text/html' }),
+      'text/plain': new Blob([plain], { type: 'text/plain' })
+    });
+    navigator.clipboard.write([item]).then(showToast).catch(() => {
+      // Fallback if browser blocks the rich write
+      navigator.clipboard.writeText(plain).then(showToast);
+    });
+  } else {
+    // Older browsers — plain text only
+    navigator.clipboard.writeText(plain).then(showToast);
+  }
 }
 
 function emailQuote(r) {
-  const subject = encodeURIComponent(`Teamflect quote — ${fmtInt(r.users)} users`);
-  const body = encodeURIComponent(quoteText(r));
-  window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  const planLabel = state.plan.charAt(0).toUpperCase() + state.plan.slice(1);
+  const subject = encodeURIComponent(
+    `Additional discount request for ${fmtInt(r.users)} users, ${planLabel} plan`
+  );
+
+  // Mailto body is plain text only — newlines via \r\n for broadest client compatibility.
+  const intro = `Hi Jan,\r\n\r\nRequesting an additional discount on the following quote:\r\n\r\n`;
+  const body = encodeURIComponent(intro + quoteText(r) + `\r\n\r\nThanks!`);
+
+  window.location.href = `mailto:jan@teamflect.com?cc=seha@teamflect.com&subject=${subject}&body=${body}`;
 }
 
 function showToast() {
