@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Teamflect Price Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --bg-elevated: #ffffff;
+    --ink: #1a1a1a;
+    --ink-muted: #6b6b6b;
+    --ink-soft: #999;
+    --accent: #2563eb;
+    --accent-deep: #1e40af;
+    --accent-soft: #eff6ff;
+    --border: #e8e4dc;
+    --border-strong: #d4cfc3;
+    --success: #047857;
+    --success-soft: #ecfdf5;
+    --warn: #b45309;
+    --warn-soft: #fef3c7;
+    --danger: #b91c1c;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(37, 99, 235, 0.04) 0%, transparent 50%),
+      radial-gradient(circle at 80% 100%, rgba(180, 83, 9, 0.03) 0%, transparent 50%);
+  }
+
+  .container {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  header {
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .brand-mark {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  .brand-tag {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-soft);
+    padding: 4px 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: 4px;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 42px;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 8px;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent-deep);
+  }
+
+  .subtitle {
+    color: var(--ink-muted);
+    font-size: 15px;
+    max-width: 620px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+    h1 { font-size: 32px; }
+    .container { padding: 32px 16px 60px; }
+  }
+
+  .card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: var(--shadow);
+  }
+
+  .result-card-wrap {
+    position: sticky;
+    top: 24px;
+  }
+
+  .card-title {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .card-subtitle {
+    font-size: 13px;
+    color: var(--ink-muted);
+    margin-bottom: 28px;
+  }
+
+  .section-divider {
+    font-family: 'Fraunces', serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 32px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border-strong);
+  }
+
+  .section-divider:first-of-type { margin-top: 0; }
+
+  .field {
+    margin-bottom: 22px;
+  }
+
+  .field.disabled { opacity: 0.4; pointer-events: none; }
+
+  .label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-muted);
+    margin-bottom: 10px;
+  }
+
+  .seg-group {
+    display: flex;
+    gap: 6px;
+    background: #f0ece4;
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+
+  .seg-group.small .seg {
+    padding: 8px 4px;
+    font-size: 12px;
+  }
+
+  .seg {
+    flex: 1;
+    padding: 10px 12px;
+    border: none;
+    background: transparent;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .seg:hover:not(.active) { color: var(--ink); }
+
+  .seg.active {
+    background: var(--bg-elevated);
+    color: var(--ink);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  .input, .select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 15px;
+    background: var(--bg-elevated);
+    color: var(--ink);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .input:focus, .select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  }
+
+  .select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236b6b6b' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 38px;
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background: #faf8f3;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+
+  .toggle-label-wrap {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .toggle-title {
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .toggle-hint {
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin-top: 2px;
+  }
+
+  .switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  .switch input { opacity: 0; width: 0; height: 0; }
+
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: #d4cfc3;
+    border-radius: 24px;
+    transition: 0.2s;
+  }
+
+  .slider:before {
+    content: "";
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    top: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+
+  .switch input:checked + .slider { background: var(--success); }
+  .switch input:checked + .slider:before { transform: translateX(20px); }
+
+  .inline-hint {
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-top: 8px;
+    line-height: 1.4;
+  }
+
+  /* ============ RESULT PANEL ============ */
+  .result-card {
+    background: linear-gradient(160deg, #1a1a1a 0%, #2a2a2a 100%);
+    color: #f0ece4;
+    border: 1px solid #1a1a1a;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .result-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 240px; height: 240px;
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .result-card .card-title { color: #f0ece4; }
+  .result-card .card-subtitle { color: #999; }
+
+  .enterprise-callout {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 1px solid #f59e0b;
+    color: #78350f;
+    padding: 24px;
+    border-radius: 12px;
+  }
+
+  .enterprise-callout strong {
+    display: block;
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    margin-bottom: 8px;
+    color: #78350f;
+  }
+
+  .enterprise-callout a {
+    color: var(--accent-deep);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .price-headline {
+    margin: 12px 0 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .price-headline-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #999;
+    margin-bottom: 8px;
+  }
+
+  .price-big {
+    font-family: 'Fraunces', serif;
+    font-size: 44px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: #fff;
+    line-height: 1;
+  }
+
+  .price-big .currency {
+    font-size: 20px;
+    color: #999;
+    margin-right: 4px;
+    vertical-align: top;
+    position: relative;
+    top: 6px;
+  }
+
+  .price-cadence {
+    color: #b8b5ad;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  .list-strikethrough {
+    color: #999;
+    font-size: 13px;
+    margin-top: 6px;
+  }
+  .list-strikethrough s { color: #777; }
+
+  .annual-breakdown {
+    margin: 14px 0 0;
+    padding: 14px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 10px;
+    font-size: 13px;
+    color: #b8b5ad;
+  }
+  .annual-breakdown b { color: #f0ece4; font-weight: 600; }
+  .annual-breakdown .row { display: flex; justify-content: space-between; padding: 3px 0; }
+
+  .breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 13px;
+    border-bottom: 1px dashed rgba(255,255,255,0.06);
+  }
+
+  .breakdown-row:last-of-type { border-bottom: none; }
+
+  .breakdown-label { color: #b8b5ad; }
+  .breakdown-value { color: #f0ece4; font-weight: 500; }
+  .breakdown-value.muted { color: #777; font-weight: 400; }
+
+  .discount-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(4, 120, 87, 0.18);
+    color: #6ee7b7;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .btn {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: #f0ece4;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+  }
+
+  .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .btn.primary:hover { background: var(--accent-deep); }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--ink);
+    color: #f0ece4;
+    padding: 12px 20px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    z-index: 100;
+  }
+
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  .footer {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 12px;
+    margin-top: 60px;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <span class="brand-mark">Teamflect</span>
+        <span class="brand-tag">Internal · Pricing</span>
+      </div>
+      <h1>The price <em>calculator</em>.</h1>
+      <p class="subtitle">Quote a customer in seconds. Volume, geography, agreement length, and payment terms are baked in. Share the result — not the spreadsheet.</p>
+    </header>
+
+    <div class="grid">
+      <!-- ===================== INPUTS ===================== -->
+      <div class="card">
+        <h2 class="card-title">Configure the deal</h2>
+        <p class="card-subtitle">All fields adjust the quote live.</p>
+
+        <div class="section-divider">Product</div>
+
+        <div class="field">
+          <span class="label">Modules</span>
+          <div class="seg-group" id="modules">
+            <button type="button" class="seg active" data-value="1-2">1–2 modules</button>
+            <button type="button" class="seg" data-value="3-4">3–4 modules</button>
+            <button type="button" class="seg" data-value="full">Full platform</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="label">Plan</span>
+          <div class="seg-group" id="plan">
+            <button type="button" class="seg" data-value="essential">Essential</button>
+            <button type="button" class="seg active" data-value="professional">Professional</button>
+            <button type="button" class="seg" data-value="enterprise">Enterprise</button>
+          </div>
+        </div>
+
+        <div class="section-divider">Customer</div>
+
+        <div class="field">
+          <span class="label">Number of users</span>
+          <input type="number" class="input" id="users" value="100" min="1" step="1" />
+          <p class="inline-hint">No volume discount under 30 users. Scales meaningfully for thousands of seats.</p>
+        </div>
+
+        <div class="field">
+          <span class="label">Country</span>
+          <select class="select" id="country"></select>
+          <p class="inline-hint">PPP-based geography adjustment, capped at 18%. US is the reference (no discount).</p>
+        </div>
+
+        <div class="field">
+          <div class="toggle-row">
+            <div class="toggle-label-wrap">
+              <span class="toggle-title">Non-profit organization</span>
+              <span class="toggle-hint">Adds a 15% discount on top of others</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="nonprofit" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="section-divider">Agreement</div>
+
+        <div class="field">
+          <span class="label">Billing rate</span>
+          <div class="seg-group" id="billing">
+            <button type="button" class="seg active" data-value="annual">Annual ($11/user)</button>
+            <button type="button" class="seg" data-value="monthly">Monthly ($14/user)</button>
+          </div>
+          <p class="inline-hint">Annual rate is required for multi-year agreements and payment-term discounts.</p>
+        </div>
+
+        <div class="field" id="termField">
+          <span class="label">Agreement length</span>
+          <div class="seg-group small" id="term">
+            <button type="button" class="seg active" data-value="1">1 yr</button>
+            <button type="button" class="seg" data-value="2">2 yrs</button>
+            <button type="button" class="seg" data-value="3">3 yrs</button>
+            <button type="button" class="seg" data-value="4">4 yrs</button>
+            <button type="button" class="seg" data-value="5">5 yrs</button>
+          </div>
+        </div>
+
+        <div class="field" id="paymentField">
+          <span class="label">Payment terms</span>
+          <div class="seg-group" id="payment">
+            <button type="button" class="seg active" data-value="installments">Annual installments</button>
+            <button type="button" class="seg" data-value="upfront">Pay upfront</button>
+          </div>
+          <p class="inline-hint">Upfront unlocks much deeper multi-year discounts. Installments get a smaller bump because the customer still benefits from a locked-in price.</p>
+        </div>
+      </div>
+
+      <!-- ===================== RESULT ===================== -->
+      <div class="result-card-wrap">
+        <div class="card result-card">
+          <h2 class="card-title">Your quote</h2>
+          <p class="card-subtitle">All amounts in USD.</p>
+          <div id="result"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Teamflect · Internal sales tool · Prices are guidance — final quotes confirmed by Jan.
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Copied to clipboard</div>
+
+<script>
+/* =========================================================================
+   PRICING CONFIG
+   ========================================================================= */
+const LIST_PRICES = {
+  essential:    { annual: 7,  monthly: 9  },
+  professional: { annual: 11, monthly: 14 }
+};
+
+/* Country PPP-derived discount. Hard-capped at 18% — geography never
+   takes more than ~1/5 off list. Factor here = (1 - discount). */
+const COUNTRIES = [
+  // 0% — reference / high-income
+  { code: 'US', name: 'United States', factor: 1.00 },
+  { code: 'CH', name: 'Switzerland',   factor: 1.00 },
+  { code: 'NO', name: 'Norway',        factor: 1.00 },
+  { code: 'DK', name: 'Denmark',       factor: 1.00 },
+  { code: 'IE', name: 'Ireland',       factor: 1.00 },
+  { code: 'LU', name: 'Luxembourg',    factor: 1.00 },
+  { code: 'SG', name: 'Singapore',     factor: 1.00 },
+
+  // ~3% — high-income peers
+  { code: 'CA', name: 'Canada',         factor: 0.97 },
+  { code: 'GB', name: 'United Kingdom', factor: 0.97 },
+  { code: 'AU', name: 'Australia',      factor: 0.97 },
+  { code: 'NZ', name: 'New Zealand',    factor: 0.97 },
+  { code: 'NL', name: 'Netherlands',    factor: 0.97 },
+  { code: 'SE', name: 'Sweden',         factor: 0.97 },
+  { code: 'FI', name: 'Finland',        factor: 0.97 },
+  { code: 'BE', name: 'Belgium',        factor: 0.97 },
+  { code: 'AT', name: 'Austria',        factor: 0.97 },
+  { code: 'DE', name: 'Germany',        factor: 0.97 },
+  { code: 'FR', name: 'France',         factor: 0.97 },
+  { code: 'IS', name: 'Iceland',        factor: 0.97 },
+  { code: 'HK', name: 'Hong Kong',      factor: 0.97 },
+  { code: 'IL', name: 'Israel',         factor: 0.97 },
+  { code: 'JP', name: 'Japan',          factor: 0.97 },
+  { code: 'AE', name: 'United Arab Emirates', factor: 0.97 },
+  { code: 'QA', name: 'Qatar',          factor: 0.97 },
+  { code: 'KW', name: 'Kuwait',         factor: 0.97 },
+
+  // ~6% — upper-middle income (Mediterranean Europe, GCC peers)
+  { code: 'IT', name: 'Italy',          factor: 0.94 },
+  { code: 'ES', name: 'Spain',          factor: 0.94 },
+  { code: 'KR', name: 'South Korea',    factor: 0.94 },
+  { code: 'PT', name: 'Portugal',       factor: 0.94 },
+  { code: 'BH', name: 'Bahrain',        factor: 0.94 },
+  { code: 'SA', name: 'Saudi Arabia',   factor: 0.94 },
+  { code: 'OM', name: 'Oman',           factor: 0.94 },
+  { code: 'CY', name: 'Cyprus',         factor: 0.94 },
+  { code: 'MT', name: 'Malta',          factor: 0.94 },
+
+  // ~10% — Central/Eastern Europe
+  { code: 'CZ', name: 'Czech Republic', factor: 0.90 },
+  { code: 'SK', name: 'Slovakia',       factor: 0.90 },
+  { code: 'SI', name: 'Slovenia',       factor: 0.90 },
+  { code: 'EE', name: 'Estonia',        factor: 0.90 },
+  { code: 'LT', name: 'Lithuania',      factor: 0.90 },
+  { code: 'LV', name: 'Latvia',         factor: 0.90 },
+  { code: 'GR', name: 'Greece',         factor: 0.90 },
+  { code: 'HU', name: 'Hungary',        factor: 0.90 },
+  { code: 'PL', name: 'Poland',         factor: 0.90 },
+  { code: 'HR', name: 'Croatia',        factor: 0.90 },
+  { code: 'RO', name: 'Romania',        factor: 0.90 },
+  { code: 'BG', name: 'Bulgaria',       factor: 0.90 },
+  { code: 'RS', name: 'Serbia',         factor: 0.90 },
+  { code: 'UY', name: 'Uruguay',        factor: 0.90 },
+  { code: 'PA', name: 'Panama',         factor: 0.90 },
+  { code: 'CR', name: 'Costa Rica',     factor: 0.90 },
+  { code: 'CL', name: 'Chile',          factor: 0.90 },
+
+  // ~14% — middle-income
+  { code: 'CN', name: 'China',          factor: 0.86 },
+  { code: 'MY', name: 'Malaysia',       factor: 0.86 },
+  { code: 'TH', name: 'Thailand',       factor: 0.86 },
+  { code: 'MX', name: 'Mexico',         factor: 0.86 },
+  { code: 'BR', name: 'Brazil',         factor: 0.86 },
+  { code: 'AR', name: 'Argentina',      factor: 0.86 },
+  { code: 'CO', name: 'Colombia',       factor: 0.86 },
+  { code: 'PE', name: 'Peru',           factor: 0.86 },
+  { code: 'DO', name: 'Dominican Republic', factor: 0.86 },
+  { code: 'ZA', name: 'South Africa',   factor: 0.86 },
+  { code: 'TR', name: 'Türkiye',        factor: 0.86 },
+  { code: 'JO', name: 'Jordan',         factor: 0.86 },
+  { code: 'LB', name: 'Lebanon',        factor: 0.86 },
+  { code: 'UA', name: 'Ukraine',        factor: 0.86 },
+
+  // 18% — capped floor for lower-middle income
+  { code: 'ID', name: 'Indonesia',      factor: 0.82 },
+  { code: 'PH', name: 'Philippines',    factor: 0.82 },
+  { code: 'VN', name: 'Vietnam',        factor: 0.82 },
+  { code: 'IN', name: 'India',          factor: 0.82 },
+  { code: 'EG', name: 'Egypt',          factor: 0.82 },
+  { code: 'MA', name: 'Morocco',        factor: 0.82 },
+  { code: 'TN', name: 'Tunisia',        factor: 0.82 },
+  { code: 'KE', name: 'Kenya',          factor: 0.82 },
+  { code: 'NG', name: 'Nigeria',        factor: 0.82 },
+  { code: 'GH', name: 'Ghana',          factor: 0.82 },
+  { code: 'BD', name: 'Bangladesh',     factor: 0.82 },
+  { code: 'PK', name: 'Pakistan',       factor: 0.82 },
+  { code: 'LK', name: 'Sri Lanka',      factor: 0.82 },
+  { code: 'NP', name: 'Nepal',          factor: 0.82 }
+];
+
+const NONPROFIT_DISCOUNT = 0.15;
+
+/* Multi-year discounts — TWO completely different curves.
+   - Installments: small bumps (still locked-in pricing, so worth something)
+   - Upfront: aggressive, because cash up-front is enormously valuable for SaaS
+
+   Index by years (1..5). Year 1 is always 0 regardless of payment terms. */
+const MULTIYEAR_DISCOUNT = {
+  installments: { 1: 0.00, 2: 0.05, 3: 0.10, 4: 0.15, 5: 0.20 },
+  upfront:      { 1: 0.00, 2: 0.12, 3: 0.22, 4: 0.30, 5: 0.38 }
+};
+
+/* =========================================================================
+   STATE
+   ========================================================================= */
+const state = {
+  modules: '1-2',
+  plan: 'professional',
+  billing: 'annual',     // 'annual' or 'monthly' — picks the rate card
+  termYears: 1,          // 1..5 — only meaningful when billing='annual'
+  payment: 'installments', // 'installments' or 'upfront' — only matters for termYears > 1
+  users: 100,
+  country: 'US',
+  nonprofit: false
+};
+
+/* =========================================================================
+   PRICING ENGINE
+   ========================================================================= */
+
+function volumeDiscount(users) {
+  if (users < 30) return 0;
+  if (users < 50)   return 0.05;
+  if (users < 100)  return 0.10;
+  if (users < 250)  return 0.15;
+  if (users < 500)  return 0.22;
+  if (users < 1000) return 0.30;
+  if (users < 2500) return 0.38;
+  if (users < 5000) return 0.45;
+  return 0.50;
+}
+
+function moduleDiscount(modules) {
+  if (modules === '1-2') return 0.10;
+  if (modules === '3-4') return 0.05;
+  return 0;
+}
+
+function countryDiscount(code) {
+  const c = COUNTRIES.find(c => c.code === code);
+  if (!c) return 0;
+  return 1 - c.factor;
+}
+
+function multiYearDiscount(termYears, payment, billing) {
+  // Multi-year only available on annual billing
+  if (billing !== 'annual') return 0;
+  const yrs = Math.max(1, Math.min(5, parseInt(termYears) || 1));
+  return MULTIYEAR_DISCOUNT[payment][yrs] || 0;
+}
+
+function calculate(s) {
+  if (s.plan === 'enterprise') {
+    return { enterprise: true };
+  }
+
+  const listPerUser = LIST_PRICES[s.plan][s.billing];
+  const users       = Math.max(1, parseInt(s.users) || 0);
+
+  // Term length in months. Monthly billing = 1 month commitment.
+  // Annual billing = termYears * 12 months.
+  const months = s.billing === 'monthly'
+    ? 1
+    : (Math.max(1, Math.min(5, parseInt(s.termYears) || 1)) * 12);
+
+  const dVol     = volumeDiscount(users);
+  const dMod     = moduleDiscount(s.modules);
+  const dCountry = countryDiscount(s.country);
+  const dNonp    = s.nonprofit ? NONPROFIT_DISCOUNT : 0;
+  const dMulti   = multiYearDiscount(s.termYears, s.payment, s.billing);
+
+  const multiplier =
+    (1 - dVol) *
+    (1 - dMod) *
+    (1 - dCountry) *
+    (1 - dNonp) *
+    (1 - dMulti);
+
+  const effectivePerUserPerMonth = listPerUser * multiplier;
+
+  const listTotal         = listPerUser * users * months;
+  const discountedTotal   = effectivePerUserPerMonth * users * months;
+  const totalDiscount     = 1 - multiplier;
+
+  // For multi-year installments: show per-year amount
+  const isMultiYearInstall = s.billing === 'annual' && parseInt(s.termYears) > 1 && s.payment === 'installments';
+  const perYearAmount = effectivePerUserPerMonth * users * 12;
+
+  return {
+    enterprise: false,
+    listPerUser,
+    listTotal,
+    effectivePerUserPerMonth,
+    discountedTotal,
+    users,
+    months,
+    termYears: parseInt(s.termYears) || 1,
+    billing: s.billing,
+    payment: s.payment,
+    isMultiYearInstall,
+    perYearAmount,
+    breakdown: {
+      volume:    dVol,
+      modules:   dMod,
+      country:   dCountry,
+      nonprofit: dNonp,
+      multiyear: dMulti
+    },
+    totalDiscount,
+    savings: listTotal - discountedTotal,
+    countryName: (COUNTRIES.find(c => c.code === s.country) || {}).name || s.country
+  };
+}
+
+/* =========================================================================
+   RENDER
+   ========================================================================= */
+const fmt = (n) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtInt = (n) => Math.round(n).toLocaleString('en-US');
+const pct = (n) => (n * 100).toFixed(1) + '%';
+
+function updateFieldVisibility() {
+  const termField    = document.getElementById('termField');
+  const paymentField = document.getElementById('paymentField');
+
+  // Term length only meaningful on annual billing
+  if (state.billing === 'monthly') {
+    termField.classList.add('disabled');
+    paymentField.classList.add('disabled');
+  } else {
+    termField.classList.remove('disabled');
+    // Payment terms only matter when termYears > 1
+    if (parseInt(state.termYears) <= 1) {
+      paymentField.classList.add('disabled');
+    } else {
+      paymentField.classList.remove('disabled');
+    }
+  }
+}
+
+function render() {
+  updateFieldVisibility();
+  const r = calculate(state);
+  const el = document.getElementById('result');
+
+  if (r.enterprise) {
+    el.innerHTML = `
+      <div class="enterprise-callout">
+        <strong>Enterprise pricing — talk to Jan</strong>
+        <p>Enterprise deals include dedicated cloud infrastructure, customer-managed encryption keys, data residency controls, white-glove implementation, and bespoke commercial terms. Pricing is not calculated here.</p>
+        <p style="margin-top:12px;">Forward this deal to <a href="mailto:jan@teamflect.com">jan@teamflect.com</a> with the prospect's user count, country, module scope, and desired agreement length.</p>
+      </div>
+    `;
+    return;
+  }
+
+  // ===== Headline label =====
+  let cadenceLabel;
+  if (r.billing === 'monthly') {
+    cadenceLabel = 'Monthly · 1-month commitment';
+  } else if (r.termYears === 1) {
+    cadenceLabel = '1-year contract value';
+  } else {
+    cadenceLabel = `${r.termYears}-year contract value · ${r.payment === 'upfront' ? 'paid upfront' : 'annual installments'}`;
+  }
+
+  // ===== Discount breakdown rows =====
+  const discountRows = [];
+
+  if (r.breakdown.volume > 0) {
+    discountRows.push(`<div class="breakdown-row"><span class="breakdown-label">Volume (${fmtInt(r.users)} users)</span><span class="breakdown-value">−${pct(r.breakdown.volume)}</span></div>`);
+  } else {
+    discountRows.push(`<div class="breakdown-row"><span class="breakdown-label">Volume (${fmtInt(r.users)} users)</span><span class="breakdown-value muted">No discount — under 30 seats</span></div>`);
+  }
+  if (r.breakdown.modules > 0) {
+    discountRows.push(`<div class="breakdown-row"><span class="breakdown-label">Module scope (${state.modules === '1-2' ? '1–2 modules' : '3–4 modules'})</span><span class="breakdown-value">−${pct(r.breakdown.modules)}</span></div>`);
+  }
+  if (r.breakdown.country > 0) {
+    discountRows.push(`<div class="breakdown-row"><span class="breakdown-label">Geography (${r.countryName})</span><span class="breakdown-value">−${pct(r.breakdown.country)}</span></div>`);
+  }
+  if (r.breakdown.nonprofit > 0) {
+    discountRows.push(`<div class="breakdown-row"><span class="breakdown-label">Non-profit</span><span class="breakdown-value">−${pct(r.breakdown.nonprofit)}</span></div>`);
+  }
+  if (r.breakdown.multiyear > 0) {
+    const labelDetail = r.payment === 'upfront' ? 'paid upfront' : 'annual installments';
+    discountRows.push(`<div class="breakdown-row"><span class="breakdown-label">${r.termYears}-year agreement (${labelDetail})</span><span class="breakdown-value">−${pct(r.breakdown.multiyear)}</span></div>`);
+  }
+
+  // ===== Annual installment helper block =====
+  const installmentBlock = r.isMultiYearInstall
+    ? `<div class="annual-breakdown">
+         <div class="row"><span>Per-year invoice</span><b>$${fmtInt(r.perYearAmount)}</b></div>
+         <div class="row"><span>Total contract value</span><b>$${fmtInt(r.discountedTotal)}</b></div>
+         <div class="row" style="border-top:1px solid rgba(255,255,255,0.08);padding-top:6px;margin-top:4px"><span>Invoice schedule</span><b>${r.termYears} × yearly</b></div>
+       </div>`
+    : '';
+
+  el.innerHTML = `
+    <div class="price-headline">
+      <div class="price-headline-label">${cadenceLabel}</div>
+      <div class="price-big"><span class="currency">$</span>${fmtInt(r.discountedTotal)}</div>
+      <div class="price-cadence">
+        $${fmt(r.effectivePerUserPerMonth)} per user / month · ${fmtInt(r.users)} users · ${r.months} month${r.months === 1 ? '' : 's'}
+      </div>
+      <div class="list-strikethrough">
+        List: <s>$${fmtInt(r.listTotal)}</s>
+        ${r.totalDiscount > 0 ? `&nbsp;·&nbsp;<span class="discount-pill">Save $${fmtInt(r.savings)} (${pct(r.totalDiscount)})</span>` : ''}
+      </div>
+      ${installmentBlock}
+    </div>
+
+    <div class="breakdown">
+      <div class="breakdown-row" style="border-bottom:1px solid rgba(255,255,255,0.12);padding-bottom:10px;margin-bottom:2px">
+        <span class="breakdown-label" style="font-weight:600;color:#f0ece4">Discount breakdown</span>
+        <span class="breakdown-value"></span>
+      </div>
+      ${discountRows.join('')}
+      <div class="breakdown-row" style="border-top:1px solid rgba(255,255,255,0.12);padding-top:10px;margin-top:2px">
+        <span class="breakdown-label" style="font-weight:600;color:#f0ece4">Effective total discount</span>
+        <span class="breakdown-value" style="color:#6ee7b7;font-weight:600">−${pct(r.totalDiscount)}</span>
+      </div>
+      <div class="breakdown-row">
+        <span class="breakdown-label">List price per user / month</span>
+        <span class="breakdown-value">$${fmt(r.listPerUser)}</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="copyBtn">Copy quote</button>
+      <button class="btn primary" id="emailBtn">Email to customer</button>
+    </div>
+  `;
+
+  document.getElementById('copyBtn').addEventListener('click', () => copyQuote(r));
+  document.getElementById('emailBtn').addEventListener('click', () => emailQuote(r));
+}
+
+/* =========================================================================
+   SHARE HELPERS
+   ========================================================================= */
+function quoteText(r) {
+  const planLabel = state.plan.charAt(0).toUpperCase() + state.plan.slice(1);
+  const modLabel = state.modules === 'full' ? 'Full platform' : state.modules + ' modules';
+
+  let agreementLine;
+  if (r.billing === 'monthly') {
+    agreementLine = 'Monthly · 1-month commitment';
+  } else if (r.termYears === 1) {
+    agreementLine = '1 year · annual billing';
+  } else {
+    agreementLine = `${r.termYears} years · ${r.payment === 'upfront' ? 'paid upfront' : 'annual installments'}`;
+  }
+
+  let invoiceLines = '';
+  if (r.isMultiYearInstall) {
+    invoiceLines = `\nInvoice schedule:   ${r.termYears} × $${fmtInt(r.perYearAmount)}/year`;
+  }
+
+  return `Teamflect — ${planLabel} Plan Quote
+
+Modules:            ${modLabel}
+Plan:               ${planLabel}
+Users:              ${fmtInt(r.users)}
+Country:            ${r.countryName}
+Non-profit:         ${state.nonprofit ? 'Yes' : 'No'}
+Agreement:          ${agreementLine}
+
+List price:         $${fmt(r.listPerUser)} / user / month
+Effective price:    $${fmt(r.effectivePerUserPerMonth)} / user / month
+Total discount:     ${pct(r.totalDiscount)}
+
+List total:         $${fmtInt(r.listTotal)}
+Final total:        $${fmtInt(r.discountedTotal)}
+You save:           $${fmtInt(r.savings)}${invoiceLines}
+
+— Teamflect`;
+}
+
+function copyQuote(r) {
+  navigator.clipboard.writeText(quoteText(r)).then(showToast);
+}
+
+function emailQuote(r) {
+  const subject = encodeURIComponent(`Teamflect quote — ${fmtInt(r.users)} users`);
+  const body = encodeURIComponent(quoteText(r));
+  window.location.href = `mailto:?subject=${subject}&body=${body}`;
+}
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+/* =========================================================================
+   INIT
+   ========================================================================= */
+function initCountrySelect() {
+  const sel = document.getElementById('country');
+  const sorted = [...COUNTRIES].sort((a, b) => {
+    if (a.code === 'US') return -1;
+    if (b.code === 'US') return 1;
+    return a.name.localeCompare(b.name);
+  });
+  sel.innerHTML = sorted.map(c => `<option value="${c.code}">${c.name}</option>`).join('');
+  sel.value = 'US';
+}
+
+function bindSegmentedGroup(id, key, parser) {
+  const group = document.getElementById(id);
+  group.querySelectorAll('.seg').forEach(btn => {
+    btn.addEventListener('click', () => {
+      group.querySelectorAll('.seg').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state[key] = parser ? parser(btn.dataset.value) : btn.dataset.value;
+      render();
+    });
+  });
+}
+
+function init() {
+  initCountrySelect();
+  bindSegmentedGroup('modules', 'modules');
+  bindSegmentedGroup('plan', 'plan');
+  bindSegmentedGroup('billing', 'billing');
+  bindSegmentedGroup('term', 'termYears', v => parseInt(v));
+  bindSegmentedGroup('payment', 'payment');
+
+  document.getElementById('users').addEventListener('input', e => {
+    state.users = parseInt(e.target.value) || 0;
+    render();
+  });
+
+  document.getElementById('country').addEventListener('change', e => {
+    state.country = e.target.value;
+    render();
+  });
+
+  document.getElementById('nonprofit').addEventListener('change', e => {
+    state.nonprofit = e.target.checked;
+    render();
+  });
+
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
