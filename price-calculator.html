@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Teamflect Price Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --bg-elevated: #ffffff;
+    --ink: #1a1a1a;
+    --ink-muted: #6b6b6b;
+    --ink-soft: #999;
+    --accent: #2563eb;
+    --accent-deep: #1e40af;
+    --accent-soft: #eff6ff;
+    --border: #e8e4dc;
+    --border-strong: #d4cfc3;
+    --success: #047857;
+    --success-soft: #ecfdf5;
+    --warn: #b45309;
+    --warn-soft: #fef3c7;
+    --danger: #b91c1c;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(37, 99, 235, 0.04) 0%, transparent 50%),
+      radial-gradient(circle at 80% 100%, rgba(180, 83, 9, 0.03) 0%, transparent 50%);
+  }
+
+  .container {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  header {
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .brand-mark {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  .brand-tag {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-soft);
+    padding: 4px 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: 4px;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 42px;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 8px;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent-deep);
+  }
+
+  .subtitle {
+    color: var(--ink-muted);
+    font-size: 15px;
+    max-width: 620px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+    h1 { font-size: 32px; }
+    .container { padding: 32px 16px 60px; }
+  }
+
+  .card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: var(--shadow);
+  }
+
+  .result-card-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* ============ ROI CARD ============ */
+  .roi-card {
+    background: var(--bg-elevated);
+  }
+
+  .roi-card .card-title { color: var(--ink); }
+  .roi-card .card-subtitle { color: var(--ink-muted); margin-bottom: 24px; }
+
+  .roi-inputs {
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px dashed var(--border-strong);
+  }
+
+  .roi-field { margin-bottom: 16px; }
+  .roi-field:last-child { margin-bottom: 0; }
+
+  .roi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  @media (max-width: 600px) {
+    .roi-grid { grid-template-columns: 1fr; }
+  }
+
+  .muted-inline {
+    color: var(--ink-soft);
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .input-prefix, .input-suffix {
+    position: relative;
+  }
+
+  .input-prefix .prefix {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ink-muted);
+    font-size: 15px;
+    font-weight: 500;
+    pointer-events: none;
+  }
+
+  .input-suffix .suffix {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ink-muted);
+    font-size: 15px;
+    font-weight: 500;
+    pointer-events: none;
+  }
+
+  .input.has-prefix { padding-left: 26px; }
+  .input.has-suffix { padding-right: 30px; }
+
+  .roi-headline {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+
+  .roi-headline-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-muted);
+  }
+
+  .roi-big {
+    font-family: 'Fraunces', serif;
+    font-size: 40px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--ink);
+  }
+
+  .roi-big.negative { color: var(--danger); }
+  .roi-big.positive { color: var(--success); }
+
+  .roi-payback {
+    font-size: 13px;
+    color: var(--ink-muted);
+    margin-top: 8px;
+  }
+
+  .roi-breakdown {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .roi-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 8px 0;
+    font-size: 13px;
+    border-bottom: 1px dashed var(--border);
+  }
+
+  .roi-row:last-of-type { border-bottom: none; }
+  .roi-row .lbl { color: var(--ink-muted); }
+  .roi-row .val { color: var(--ink); font-weight: 600; }
+  .roi-row.subtract .val { color: var(--danger); }
+  .roi-row.add .val { color: var(--success); }
+  .roi-row.total {
+    margin-top: 6px;
+    padding: 12px 14px;
+    background: #faf8f3;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+  }
+  .roi-row.total .lbl { color: var(--ink); font-weight: 600; }
+  .roi-row.total .val { font-size: 18px; font-family: 'Fraunces', serif; font-weight: 600; }
+
+  .roi-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .roi-actions .btn {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border-strong);
+    background: var(--bg-elevated);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .roi-actions .btn:hover {
+    background: #faf8f3;
+    border-color: var(--ink-muted);
+  }
+
+  .roi-actions .btn.primary {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #f0ece4;
+  }
+  .roi-actions .btn.primary:hover {
+    background: #000;
+  }
+
+  .roi-empty {
+    color: var(--ink-soft);
+    font-style: italic;
+    padding: 20px 0;
+    text-align: center;
+  }
+
+  .card-title {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .card-subtitle {
+    font-size: 13px;
+    color: var(--ink-muted);
+    margin-bottom: 28px;
+  }
+
+  .section-divider {
+    font-family: 'Fraunces', serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 32px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border-strong);
+  }
+
+  .section-divider:first-of-type { margin-top: 0; }
+
+  .field {
+    margin-bottom: 22px;
+  }
+
+  .field.disabled { opacity: 0.4; pointer-events: none; }
+
+  .label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-muted);
+    margin-bottom: 10px;
+  }
+
+  .seg-group {
+    display: flex;
+    gap: 6px;
+    background: #f0ece4;
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+
+  .seg-group.small .seg {
+    padding: 8px 4px;
+    font-size: 12px;
+  }
+
+  .seg {
+    flex: 1;
+    padding: 10px 12px;
+    border: none;
+    background: transparent;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .seg:hover:not(.active) { color: var(--ink); }
+
+  .seg.active {
+    background: var(--bg-elevated);
+    color: var(--ink);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  .input, .select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 15px;
+    background: var(--bg-elevated);
+    color: var(--ink);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .input:focus, .select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  }
+
+  .select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236b6b6b' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 38px;
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background: #faf8f3;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+
+  .toggle-label-wrap {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .toggle-title {
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .toggle-hint {
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin-top: 2px;
+  }
+
+  .switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  .switch input { opacity: 0; width: 0; height: 0; }
+
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: #d4cfc3;
+    border-radius: 24px;
+    transition: 0.2s;
+  }
+
+  .slider:before {
+    content: "";
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    top: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+
+  .switch input:checked + .slider { background: var(--success); }
+  .switch input:checked + .slider:before { transform: translateX(20px); }
+
+  .inline-hint {
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-top: 8px;
+    line-height: 1.4;
+  }
+
+  /* ============ RESULT PANEL ============ */
+  .result-card {
+    background: linear-gradient(160deg, #1a1a1a 0%, #2a2a2a 100%);
+    color: #f0ece4;
+    border: 1px solid #1a1a1a;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .result-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 240px; height: 240px;
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .result-card .card-title { color: #f0ece4; }
+  .result-card .card-subtitle { color: #999; }
+
+  .enterprise-callout {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 1px solid #f59e0b;
+    color: #78350f;
+    padding: 24px;
+    border-radius: 12px;
+  }
+
+  .enterprise-callout strong {
+    display: block;
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    margin-bottom: 8px;
+    color: #78350f;
+  }
+
+  .enterprise-callout a {
+    color: var(--accent-deep);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .price-headline {
+    margin: 12px 0 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .price-headline-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #999;
+    margin-bottom: 8px;
+  }
+
+  .price-big {
+    font-family: 'Fraunces', serif;
+    font-size: 44px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: #fff;
+    line-height: 1;
+  }
+
+  .price-big .currency {
+    font-size: 20px;
+    color: #999;
+    margin-right: 4px;
+    vertical-align: top;
+    position: relative;
+    top: 6px;
+  }
+
+  .price-cadence {
+    color: #b8b5ad;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  .list-strikethrough {
+    color: #999;
+    font-size: 13px;
+    margin-top: 6px;
+  }
+  .list-strikethrough s { color: #777; }
+
+  .annual-breakdown {
+    margin: 14px 0 0;
+    padding: 14px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 10px;
+    font-size: 13px;
+    color: #b8b5ad;
+  }
+  .annual-breakdown b { color: #f0ece4; font-weight: 600; }
+  .annual-breakdown .row { display: flex; justify-content: space-between; padding: 3px 0; }
+
+  .breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 13px;
+    border-bottom: 1px dashed rgba(255,255,255,0.06);
+  }
+
+  .breakdown-row:last-of-type { border-bottom: none; }
+
+  .breakdown-label { color: #b8b5ad; }
+  .breakdown-value { color: #f0ece4; font-weight: 500; }
+  .breakdown-value.muted { color: #777; font-weight: 400; }
+
+  .discount-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(4, 120, 87, 0.18);
+    color: #6ee7b7;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .btn {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: #f0ece4;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+  }
+
+  .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .btn.primary:hover { background: var(--accent-deep); }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--ink);
+    color: #f0ece4;
+    padding: 12px 20px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    z-index: 100;
+  }
+
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  .footer {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 12px;
+    margin-top: 60px;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <span class="brand-mark">Teamflect</span>
+        <span class="brand-tag">Internal · Pricing</span>
+      </div>
+      <h1>The price <em>calculator</em>.</h1>
+      <p class="subtitle">Quote a customer in seconds. Volume, geography, agreement length, and payment terms are baked in. Share the result — not the spreadsheet.</p>
+    </header>
+
+    <div class="grid">
+      <!-- ===================== INPUTS ===================== -->
+      <div class="card">
+        <h2 class="card-title">Configure the deal</h2>
+        <p class="card-subtitle">All fields adjust the quote live.</p>
+
+        <div class="section-divider">Product</div>
+
+        <div class="field">
+          <span class="label">Modules</span>
+          <div class="seg-group" id="modules">
+            <button type="button" class="seg" data-value="1-2">1–2 modules</button>
+            <button type="button" class="seg" data-value="3-4">3–4 modules</button>
+            <button type="button" class="seg active" data-value="full">Full platform</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="label">Plan</span>
+          <div class="seg-group" id="plan">
+            <button type="button" class="seg active" data-value="essential">Essential</button>
+            <button type="button" class="seg" data-value="professional">Professional</button>
+            <button type="button" class="seg" data-value="enterprise">Enterprise</button>
+          </div>
+        </div>
+
+        <div class="section-divider">Customer</div>
+
+        <div class="field">
+          <span class="label">Number of users</span>
+          <input type="number" class="input" id="users" value="100" min="1" step="1" />
+          <p class="inline-hint">No volume discount under 30 users. Scales meaningfully for thousands of seats.</p>
+        </div>
+
+        <div class="field">
+          <span class="label">Country</span>
+          <select class="select" id="country"></select>
+          <p class="inline-hint">PPP-based geography adjustment, capped at 18%. US is the reference (no discount).</p>
+        </div>
+
+        <div class="field">
+          <div class="toggle-row">
+            <div class="toggle-label-wrap">
+              <span class="toggle-title">Non-profit organization</span>
+              <span class="toggle-hint">Adds a 15% discount on top of others</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="nonprofit" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="section-divider">Agreement</div>
+
+        <div class="field">
+          <span class="label">Billing rate</span>
+          <div class="seg-group" id="billing">
+            <button type="button" class="seg active" data-value="annual">Annual</button>
+            <button type="button" class="seg" data-value="monthly">Monthly</button>
+          </div>
+          <p class="inline-hint">Annual rate is required for multi-year agreements and payment-term discounts.</p>
+        </div>
+
+        <div class="field" id="termField">
+          <span class="label">Agreement length</span>
+          <div class="seg-group small" id="term">
+            <button type="button" class="seg" data-value="1">1 yr</button>
+            <button type="button" class="seg" data-value="2">2 yrs</button>
+            <button type="button" class="seg active" data-value="3">3 yrs</button>
+            <button type="button" class="seg" data-value="4">4 yrs</button>
+            <button type="button" class="seg" data-value="5">5 yrs</button>
+          </div>
+        </div>
+
+        <div class="field" id="paymentField">
+          <span class="label">Payment terms</span>
+          <div class="seg-group" id="payment">
+            <button type="button" class="seg active" data-value="installments">Annual installments</button>
+            <button type="button" class="seg" data-value="upfront">Pay upfront</button>
+          </div>
+          <p class="inline-hint">Upfront unlocks much deeper multi-year discounts. Installments get a smaller bump because the customer still benefits from a locked-in price.</p>
+        </div>
+      </div>
+
+      <!-- ===================== RESULT ===================== -->
+      <div class="result-card-wrap">
+        <div class="card result-card">
+          <h2 class="card-title">Your quote</h2>
+          <p class="card-subtitle">All amounts in USD.</p>
+          <div id="result"></div>
+        </div>
+
+        <!-- ===================== ROI CARD ===================== -->
+        <div class="card roi-card" id="roiCard">
+          <h2 class="card-title">Return on investment</h2>
+          <p class="card-subtitle">Time saved on HR admin + reduced attrition, minus the Teamflect cost from above.</p>
+
+          <div class="roi-inputs">
+            <div class="roi-field">
+              <label class="label" for="roiSalary">Average annual salary <span class="muted-inline">(white-collar)</span></label>
+              <div class="input-prefix">
+                <span class="prefix">$</span>
+                <input type="number" class="input has-prefix" id="roiSalary" min="0" step="1000" />
+              </div>
+              <p class="inline-hint" id="roiSalaryHint">Auto-filled from country average. Adjust if the customer's team is paid differently.</p>
+            </div>
+
+            <div class="roi-grid">
+              <div class="roi-field">
+                <label class="label" for="roiAttrition">Annual attrition rate for the organization</label>
+                <div class="input-suffix">
+                  <input type="number" class="input has-suffix" id="roiAttrition" value="8" min="0" max="100" step="1" />
+                  <span class="suffix">%</span>
+                </div>
+              </div>
+              <div class="roi-field">
+                <label class="label" for="roiOpsHours">Operational work per employee</label>
+                <div class="input-suffix">
+                  <input type="number" class="input has-suffix" id="roiOpsHours" value="1.25" min="0" max="80" step="0.25" />
+                  <span class="suffix">hrs/wk</span>
+                </div>
+                <p class="inline-hint">Hours per week lost to HR admin: reviews, goal tracking, feedback. Conservative org-wide average; raise to 2–3 for manager-heavy teams.</p>
+              </div>
+            </div>
+          </div>
+
+          <div id="roiResult"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Teamflect · Internal sales tool · Prices are guidance — final quotes confirmed by Jan.
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Copied to clipboard</div>
+
+<script>
+/* =========================================================================
+   PRICING CONFIG
+   ========================================================================= */
+const LIST_PRICES = {
+  essential:    { annual: 7,  monthly: 9  },
+  professional: { annual: 11, monthly: 14 }
+};
+
+/* Country PPP-derived discount. Hard-capped at 18% — geography never
+   takes more than ~1/5 off list. Factor here = (1 - discount). */
+const COUNTRIES = [
+  // 0% — reference / high-income
+  { code: 'US', name: 'United States', factor: 1.00 },
+  { code: 'CH', name: 'Switzerland',   factor: 1.00 },
+  { code: 'NO', name: 'Norway',        factor: 1.00 },
+  { code: 'DK', name: 'Denmark',       factor: 1.00 },
+  { code: 'IE', name: 'Ireland',       factor: 1.00 },
+  { code: 'LU', name: 'Luxembourg',    factor: 1.00 },
+  { code: 'SG', name: 'Singapore',     factor: 1.00 },
+
+  // ~3% — high-income peers
+  { code: 'CA', name: 'Canada',         factor: 0.97 },
+  { code: 'GB', name: 'United Kingdom', factor: 0.97 },
+  { code: 'AU', name: 'Australia',      factor: 0.97 },
+  { code: 'NZ', name: 'New Zealand',    factor: 0.97 },
+  { code: 'NL', name: 'Netherlands',    factor: 0.97 },
+  { code: 'SE', name: 'Sweden',         factor: 0.97 },
+  { code: 'FI', name: 'Finland',        factor: 0.97 },
+  { code: 'BE', name: 'Belgium',        factor: 0.97 },
+  { code: 'AT', name: 'Austria',        factor: 0.97 },
+  { code: 'DE', name: 'Germany',        factor: 0.97 },
+  { code: 'FR', name: 'France',         factor: 0.97 },
+  { code: 'IS', name: 'Iceland',        factor: 0.97 },
+  { code: 'HK', name: 'Hong Kong',      factor: 0.97 },
+  { code: 'IL', name: 'Israel',         factor: 0.97 },
+  { code: 'JP', name: 'Japan',          factor: 0.97 },
+  { code: 'AE', name: 'United Arab Emirates', factor: 0.97 },
+  { code: 'QA', name: 'Qatar',          factor: 0.97 },
+  { code: 'KW', name: 'Kuwait',         factor: 0.97 },
+
+  // ~6% — upper-middle income (Mediterranean Europe, GCC peers)
+  { code: 'IT', name: 'Italy',          factor: 0.94 },
+  { code: 'ES', name: 'Spain',          factor: 0.94 },
+  { code: 'KR', name: 'South Korea',    factor: 0.94 },
+  { code: 'PT', name: 'Portugal',       factor: 0.94 },
+  { code: 'BH', name: 'Bahrain',        factor: 0.94 },
+  { code: 'SA', name: 'Saudi Arabia',   factor: 0.94 },
+  { code: 'OM', name: 'Oman',           factor: 0.94 },
+  { code: 'CY', name: 'Cyprus',         factor: 0.94 },
+  { code: 'MT', name: 'Malta',          factor: 0.94 },
+
+  // ~10% — Central/Eastern Europe
+  { code: 'CZ', name: 'Czech Republic', factor: 0.90 },
+  { code: 'SK', name: 'Slovakia',       factor: 0.90 },
+  { code: 'SI', name: 'Slovenia',       factor: 0.90 },
+  { code: 'EE', name: 'Estonia',        factor: 0.90 },
+  { code: 'LT', name: 'Lithuania',      factor: 0.90 },
+  { code: 'LV', name: 'Latvia',         factor: 0.90 },
+  { code: 'GR', name: 'Greece',         factor: 0.90 },
+  { code: 'HU', name: 'Hungary',        factor: 0.90 },
+  { code: 'PL', name: 'Poland',         factor: 0.90 },
+  { code: 'HR', name: 'Croatia',        factor: 0.90 },
+  { code: 'RO', name: 'Romania',        factor: 0.90 },
+  { code: 'BG', name: 'Bulgaria',       factor: 0.90 },
+  { code: 'RS', name: 'Serbia',         factor: 0.90 },
+  { code: 'UY', name: 'Uruguay',        factor: 0.90 },
+  { code: 'PA', name: 'Panama',         factor: 0.90 },
+  { code: 'CR', name: 'Costa Rica',     factor: 0.90 },
+  { code: 'CL', name: 'Chile',          factor: 0.90 },
+
+  // ~14% — middle-income
+  { code: 'CN', name: 'China',          factor: 0.86 },
+  { code: 'MY', name: 'Malaysia',       factor: 0.86 },
+  { code: 'TH', name: 'Thailand',       factor: 0.86 },
+  { code: 'MX', name: 'Mexico',         factor: 0.86 },
+  { code: 'BR', name: 'Brazil',         factor: 0.86 },
+  { code: 'AR', name: 'Argentina',      factor: 0.86 },
+  { code: 'CO', name: 'Colombia',       factor: 0.86 },
+  { code: 'PE', name: 'Peru',           factor: 0.86 },
+  { code: 'DO', name: 'Dominican Republic', factor: 0.86 },
+  { code: 'ZA', name: 'South Africa',   factor: 0.86 },
+  { code: 'TR', name: 'Türkiye',        factor: 0.86 },
+  { code: 'JO', name: 'Jordan',         factor: 0.86 },
+  { code: 'LB', name: 'Lebanon',        factor: 0.86 },
+  { code: 'UA', name: 'Ukraine',        factor: 0.86 },
+
+  // 18% — capped floor for lower-middle income
+  { code: 'ID', name: 'Indonesia',      factor: 0.82 },
+  { code: 'PH', name: 'Philippines',    factor: 0.82 },
+  { code: 'VN', name: 'Vietnam',        factor: 0.82 },
+  { code: 'IN', name: 'India',          factor: 0.82 },
+  { code: 'EG', name: 'Egypt',          factor: 0.82 },
+  { code: 'MA', name: 'Morocco',        factor: 0.82 },
+  { code: 'TN', name: 'Tunisia',        factor: 0.82 },
+  { code: 'KE', name: 'Kenya',          factor: 0.82 },
+  { code: 'NG', name: 'Nigeria',        factor: 0.82 },
+  { code: 'GH', name: 'Ghana',          factor: 0.82 },
+  { code: 'BD', name: 'Bangladesh',     factor: 0.82 },
+  { code: 'PK', name: 'Pakistan',       factor: 0.82 },
+  { code: 'LK', name: 'Sri Lanka',      factor: 0.82 },
+  { code: 'NP', name: 'Nepal',          factor: 0.82 }
+];
+
+/* Country-level average annual white-collar / full-time office salary (USD).
+   These are reference defaults — the rep can override on a deal-by-deal basis.
+   Sources: BLS, Eurostat, OECD, Numbeo, national stat offices (Q4 2025 approx),
+   anchored on US ≈ $70,000 and scaled by GDP-per-capita relativity. */
+const COUNTRY_SALARY = {
+  US: 70000, CH: 95000, NO: 72000, DK: 70000, IE: 68000, LU: 80000, SG: 65000,
+  CA: 62000, GB: 58000, AU: 70000, NZ: 60000, NL: 62000, SE: 58000, FI: 55000,
+  BE: 58000, AT: 58000, DE: 60000, FR: 52000, IS: 60000, HK: 55000, IL: 55000,
+  JP: 48000, AE: 55000, QA: 60000, KW: 50000,
+  IT: 42000, ES: 38000, KR: 45000, PT: 30000, BH: 38000, SA: 38000, OM: 32000,
+  CY: 32000, MT: 30000,
+  CZ: 28000, SK: 22000, SI: 28000, EE: 24000, LT: 22000, LV: 20000,
+  GR: 22000, HU: 18000, PL: 22000, HR: 20000, RO: 18000, BG: 14000, RS: 14000,
+  UY: 18000, PA: 18000, CR: 18000, CL: 20000,
+  CN: 18000, MY: 15000, TH: 14000, MX: 16000, BR: 14000, AR: 12000, CO: 10000,
+  PE: 10000, DO: 10000, ZA: 16000, TR: 14000, JO: 10000, LB: 10000, UA: 8000,
+  ID: 8000, PH: 8000, VN: 7000, IN: 8000, EG: 6000, MA: 8000, TN: 8000,
+  KE: 7000, NG: 7000, GH: 6000, BD: 5000, PK: 5000, LK: 5000, NP: 4000
+};
+
+function countrySalary(code) {
+  return COUNTRY_SALARY[code] || 35000; // sensible fallback if a new country is added
+}
+
+const NONPROFIT_DISCOUNT = 0.15;
+
+/* Multi-year discounts — TWO completely different curves.
+   - Installments: small bumps (still locked-in pricing, so worth something)
+   - Upfront: aggressive, because cash up-front is enormously valuable for SaaS
+
+   Index by years (1..5). Year 1 is always 0 regardless of payment terms. */
+const MULTIYEAR_DISCOUNT = {
+  installments: { 1: 0.00, 2: 0.06, 3: 0.12, 4: 0.18, 5: 0.24 },
+  upfront:      { 1: 0.00, 2: 0.12, 3: 0.24, 4: 0.36, 5: 0.45 }
+};
+
+/* =========================================================================
+   STATE
+   ========================================================================= */
+const state = {
+  modules: 'full',
+  plan: 'essential',
+  billing: 'annual',     // 'annual' or 'monthly' — picks the rate card
+  termYears: 3,          // 1..5 — only meaningful when billing='annual'
+  payment: 'installments', // 'installments' or 'upfront' — only matters for termYears > 1
+  users: 100,
+  country: 'US',
+  nonprofit: false,
+
+  // ROI inputs (mirrors the live website's calculator logic)
+  roi: {
+    salary: null,             // null = follow country default; once user types, it locks
+    salaryUserEdited: false,
+    attrition: 8,             // annual attrition %
+    opsHours: 1.25            // hrs/week per employee on HR admin (conservative org-wide avg)
+  }
+};
+
+/* =========================================================================
+   PRICING ENGINE
+   ========================================================================= */
+
+function volumeDiscount(users) {
+  if (users < 30) return 0;
+  if (users < 50)   return 0.04;
+  if (users < 100)  return 0.08;
+  if (users < 250)  return 0.13;
+  if (users < 500)  return 0.20;
+  if (users < 1000) return 0.27;
+  if (users < 2500) return 0.34;
+  if (users < 5000) return 0.40;
+  return 0.45;
+}
+
+function moduleDiscount(modules) {
+  if (modules === '1-2') return 0.20;
+  if (modules === '3-4') return 0.10;
+  return 0;
+}
+
+function countryDiscount(code) {
+  const c = COUNTRIES.find(c => c.code === code);
+  if (!c) return 0;
+  return 1 - c.factor;
+}
+
+function multiYearDiscount(termYears, payment, billing) {
+  // Multi-year only available on annual billing
+  if (billing !== 'annual') return 0;
+  const yrs = Math.max(1, Math.min(5, parseInt(termYears) || 1));
+  return MULTIYEAR_DISCOUNT[payment][yrs] || 0;
+}
+
+/* Professional plan gets an extra discount on top of all other levers —
+   makes the upsell from Essential more attractive. */
+const PRO_PLAN_DISCOUNT = 0.07;
+
+function calculate(s) {
+  if (s.plan === 'enterprise') {
+    return { enterprise: true };
+  }
+
+  const listPerUser = LIST_PRICES[s.plan][s.billing];
+  const users       = Math.max(1, parseInt(s.users) || 0);
+
+  // Term length in months. Monthly billing = 1 month commitment.
+  // Annual billing = termYears * 12 months.
+  const months = s.billing === 'monthly'
+    ? 1
+    : (Math.max(1, Math.min(5, parseInt(s.termYears) || 1)) * 12);
+
+  const dVol     = volumeDiscount(users);
+  const dMod     = moduleDiscount(s.modules);
+  const dCountry = countryDiscount(s.country);
+  const dNonp    = s.nonprofit ? NONPROFIT_DISCOUNT : 0;
+  const dMulti   = multiYearDiscount(s.termYears, s.payment, s.billing);
+  const dPro     = s.plan === 'professional' ? PRO_PLAN_DISCOUNT : 0;
+
+  const multiplier =
+    (1 - dVol) *
+    (1 - dMod) *
+    (1 - dCountry) *
+    (1 - dNonp) *
+    (1 - dMulti) *
+    (1 - dPro);
+
+  const effectivePerUserPerMonth = listPerUser * multiplier;
+
+  const listTotal         = listPerUser * users * months;
+  const discountedTotal   = effectivePerUserPerMonth * users * months;
+  const totalDiscount     = 1 - multiplier;
+
+  // For multi-year installments: show per-year amount
+  const isMultiYearInstall = s.billing === 'annual' && parseInt(s.termYears) > 1 && s.payment === 'installments';
+  const perYearAmount = effectivePerUserPerMonth * users * 12;
+
+  return {
+    enterprise: false,
+    listPerUser,
+    listTotal,
+    effectivePerUserPerMonth,
+    discountedTotal,
+    users,
+    months,
+    termYears: parseInt(s.termYears) || 1,
+    billing: s.billing,
+    payment: s.payment,
+    isMultiYearInstall,
+    perYearAmount,
+    breakdown: {
+      volume:    dVol,
+      modules:   dMod,
+      country:   dCountry,
+      nonprofit: dNonp,
+      multiyear: dMulti,
+      proPlan:   dPro
+    },
+    totalDiscount,
+    savings: listTotal - discountedTotal,
+    countryName: (COUNTRIES.find(c => c.code === s.country) || {}).name || s.country
+  };
+}
+
+/* =========================================================================
+   RENDER
+   ========================================================================= */
+const fmt = (n) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtInt = (n) => Math.round(n).toLocaleString('en-US');
+const pct = (n) => (n * 100).toFixed(1) + '%';
+
+function updateFieldVisibility() {
+  const termField    = document.getElementById('termField');
+  const paymentField = document.getElementById('paymentField');
+
+  // Term length only meaningful on annual billing
+  if (state.billing === 'monthly') {
+    termField.classList.add('disabled');
+    paymentField.classList.add('disabled');
+  } else {
+    termField.classList.remove('disabled');
+    // Payment terms only matter when termYears > 1
+    if (parseInt(state.termYears) <= 1) {
+      paymentField.classList.add('disabled');
+    } else {
+      paymentField.classList.remove('disabled');
+    }
+  }
+}
+
+function render() {
+  updateFieldVisibility();
+  const r = calculate(state);
+  const el = document.getElementById('result');
+
+  if (r.enterprise) {
+    el.innerHTML = `
+      <div class="enterprise-callout">
+        <strong>Enterprise pricing — talk to Jan</strong>
+        <p>Enterprise deals include dedicated cloud infrastructure, customer-managed encryption keys, data residency controls, white-glove implementation, and bespoke commercial terms. Pricing is not calculated here.</p>
+        <p style="margin-top:12px;">Forward this deal to <a href="mailto:jan@teamflect.com">jan@teamflect.com</a> with the prospect's user count, country, module scope, and desired agreement length.</p>
+      </div>
+    `;
+    return;
+  }
+
+  // ===== Headline label =====
+  let cadenceLabel;
+  if (r.billing === 'monthly') {
+    cadenceLabel = 'Monthly · 1-month commitment';
+  } else if (r.termYears === 1) {
+    cadenceLabel = '1-year contract value';
+  } else {
+    cadenceLabel = `${r.termYears}-year contract value · ${r.payment === 'upfront' ? 'paid upfront' : 'annual installments'}`;
+  }
+
+  // ===== Discount breakdown rows =====
+  const discountRows = [];
+
+  if (r.breakdown.volume > 0) {
+    discountRows.push(`<div class="breakdown-row"><span class="breakdown-label">Volume (${fmtInt(r.users)} users)</span><span class="breakdown-value">−${pct(r.breakdown.volume)}</span></div>`);
+  } else {
+    discountRows.push(`<div class="breakdown-row"><span class="breakdown-label">Volume (${fmtInt(r.users)} users)</span><span class="breakdown-value muted">No discount — under 30 seats</span></div>`);
+  }
+  if (r.breakdown.modules > 0) {
+    discountRows.push(`<div class="breakdown-row"><span class="breakdown-label">Module scope (${state.modules === '1-2' ? '1–2 modules' : '3–4 modules'})</span><span class="breakdown-value">−${pct(r.breakdown.modules)}</span></div>`);
+  }
+  if (r.breakdown.country > 0) {
+    discountRows.push(`<div class="breakdown-row"><span class="breakdown-label">Geography (${r.countryName})</span><span class="breakdown-value">−${pct(r.breakdown.country)}</span></div>`);
+  }
+  if (r.breakdown.nonprofit > 0) {
+    discountRows.push(`<div class="breakdown-row"><span class="breakdown-label">Non-profit</span><span class="breakdown-value">−${pct(r.breakdown.nonprofit)}</span></div>`);
+  }
+  if (r.breakdown.multiyear > 0) {
+    const labelDetail = r.payment === 'upfront' ? 'paid upfront' : 'annual installments';
+    discountRows.push(`<div class="breakdown-row"><span class="breakdown-label">${r.termYears}-year agreement (${labelDetail})</span><span class="breakdown-value">−${pct(r.breakdown.multiyear)}</span></div>`);
+  }
+  if (r.breakdown.proPlan > 0) {
+    discountRows.push(`<div class="breakdown-row"><span class="breakdown-label">Professional plan bonus</span><span class="breakdown-value">−${pct(r.breakdown.proPlan)}</span></div>`);
+  }
+
+  // ===== Annual installment helper block =====
+  const installmentBlock = r.isMultiYearInstall
+    ? `<div class="annual-breakdown">
+         <div class="row"><span>Per-year invoice</span><b>$${fmtInt(r.perYearAmount)}</b></div>
+         <div class="row"><span>Total contract value</span><b>$${fmtInt(r.discountedTotal)}</b></div>
+         <div class="row" style="border-top:1px solid rgba(255,255,255,0.08);padding-top:6px;margin-top:4px"><span>Invoice schedule</span><b>${r.termYears} × yearly</b></div>
+       </div>`
+    : '';
+
+  el.innerHTML = `
+    <div class="price-headline">
+      <div class="price-headline-label">${cadenceLabel}</div>
+      <div class="price-big"><span class="currency">$</span>${fmtInt(r.discountedTotal)}</div>
+      <div class="price-cadence">
+        $${fmt(r.effectivePerUserPerMonth)} per user / month · ${fmtInt(r.users)} users · ${r.months} month${r.months === 1 ? '' : 's'}
+      </div>
+      <div class="list-strikethrough">
+        List: <s>$${fmtInt(r.listTotal)}</s>
+        ${r.totalDiscount > 0 ? `&nbsp;·&nbsp;<span class="discount-pill">Save $${fmtInt(r.savings)} (${pct(r.totalDiscount)})</span>` : ''}
+      </div>
+      ${installmentBlock}
+    </div>
+
+    <div class="breakdown">
+      <div class="breakdown-row" style="border-bottom:1px solid rgba(255,255,255,0.12);padding-bottom:10px;margin-bottom:2px">
+        <span class="breakdown-label" style="font-weight:600;color:#f0ece4">Discount breakdown</span>
+        <span class="breakdown-value"></span>
+      </div>
+      ${discountRows.join('')}
+      <div class="breakdown-row" style="border-top:1px solid rgba(255,255,255,0.12);padding-top:10px;margin-top:2px">
+        <span class="breakdown-label" style="font-weight:600;color:#f0ece4">Effective total discount</span>
+        <span class="breakdown-value" style="color:#6ee7b7;font-weight:600">−${pct(r.totalDiscount)}</span>
+      </div>
+      <div class="breakdown-row">
+        <span class="breakdown-label">List price per user / month</span>
+        <span class="breakdown-value">$${fmt(r.listPerUser)}</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="copyBtn">Copy quote</button>
+      <button class="btn primary" id="emailBtn">Email Jan for additional discount</button>
+    </div>
+  `;
+
+  document.getElementById('copyBtn').addEventListener('click', () => copyQuote());
+  document.getElementById('emailBtn').addEventListener('click', () => emailQuote(r));
+
+  // ROI panel reacts to the same state changes (users, plan, discounted price)
+  renderROI();
+}
+
+/* =========================================================================
+   ROI ENGINE — matches the live teamflect.com/roi-calculator logic exactly
+   =========================================================================
+   Live page formula (Essential / Professional only):
+     hr   = salary / 1920                                    (hourly rate, 48wk × 40h)
+     hs   = employees × 48 × opsHours × efficiency           (Essential 0.065, Pro 0.12)
+     ts   = hs × hr                                          (time savings $)
+     rs   = employees × (attrition/100) × (salary × 0.5) × 0.02   (retention savings $)
+     tot  = ts + rs                                          (total annual savings)
+     lc   = annual Teamflect cost
+     roi  = (tot − lc) / lc                                  (ROI multiplier)
+     pb   = 12 / roi                                         (payback in months)
+
+   For lc, the live site uses list price (12 × emp × $7 or $11). We instead pull
+   the *discounted* annual cost from the price calculator above, so the rep can
+   show the customer the ROI of the deal they're actually being offered. */
+
+const ROI_EFFICIENCY = { essential: 0.065, professional: 0.095 };
+
+function calculateROI() {
+  const users    = Math.max(0, parseInt(state.users) || 0);
+  const salary   = Math.max(0, parseFloat(state.roi.salary != null ? state.roi.salary : countrySalary(state.country)) || 0);
+  const attr     = Math.max(0, parseFloat(state.roi.attrition) || 0);
+  const opsHrs   = Math.max(0, parseFloat(state.roi.opsHours) || 0);
+  const plan     = state.plan;
+
+  // Enterprise has no list price on this page — fall back to Professional efficiency
+  const eff = ROI_EFFICIENCY[plan] || ROI_EFFICIENCY.professional;
+
+  const hourly       = salary / 1920;
+  const hoursSaved   = users * 48 * opsHrs * eff;
+  const timeSavings  = hoursSaved * hourly;
+  const retSavings   = users * (attr / 100) * (salary * 0.5) * 0.02;
+  const totalSavings = timeSavings + retSavings;
+
+  // Pull the annual Teamflect cost from the main pricing calculator.
+  // For monthly billing: cost × 12. For 1yr: discountedTotal. For multi-year installments: perYearAmount.
+  // For multi-year upfront: amortized over the term (discountedTotal / termYears).
+  const priceR = calculate(state);
+  let annualCost = 0;
+  if (!priceR.enterprise) {
+    if (state.billing === 'monthly') {
+      annualCost = priceR.discountedTotal * 12;
+    } else if (state.termYears === 1) {
+      annualCost = priceR.discountedTotal;
+    } else if (state.payment === 'installments') {
+      annualCost = priceR.perYearAmount;
+    } else { // upfront multi-year
+      annualCost = priceR.discountedTotal / state.termYears;
+    }
+  }
+
+  const netAnnual  = totalSavings - annualCost;
+  const roiMult    = annualCost > 0 ? (totalSavings - annualCost) / annualCost : 0;
+  const roiPct     = roiMult * 100;
+  const paybackMo  = roiMult > 0 ? 12 / roiMult : null;
+
+  return {
+    enterprise:   priceR.enterprise,
+    users, salary, attr, opsHrs, plan,
+    hourly, hoursSaved,
+    timeSavings, retSavings, totalSavings,
+    annualCost, netAnnual, roiMult, roiPct, paybackMo
+  };
+}
+
+function renderROI() {
+  const el = document.getElementById('roiResult');
+  if (!el) return;
+
+  // Sync the salary input field with the current country default if rep hasn't edited it
+  const salaryInput = document.getElementById('roiSalary');
+  if (salaryInput && !state.roi.salaryUserEdited) {
+    salaryInput.value = countrySalary(state.country);
+  }
+
+  const r = calculateROI();
+
+  if (r.enterprise) {
+    el.innerHTML = `
+      <div class="roi-empty">
+        ROI calculation is skipped for Enterprise deals — Jan will provide a tailored business case after scoping.
+      </div>
+    `;
+    return;
+  }
+
+  if (r.users === 0 || r.annualCost === 0) {
+    el.innerHTML = `<div class="roi-empty">Fill in the user count above to see ROI.</div>`;
+    return;
+  }
+
+  const roiClass = r.netAnnual >= 0 ? 'positive' : 'negative';
+  const paybackStr = r.paybackMo == null
+    ? 'No payback (negative ROI)'
+    : (r.paybackMo < 1
+        ? '< 1 month payback'
+        : `${r.paybackMo.toFixed(1)} months payback`);
+
+  el.innerHTML = `
+    <div class="roi-headline">
+      <div>
+        <div class="roi-headline-label">Estimated annual return</div>
+        <div class="roi-big ${roiClass}">${r.netAnnual >= 0 ? '+' : '−'}$${fmtInt(Math.abs(r.netAnnual))}</div>
+        <div class="roi-payback">${pct(r.roiPct/100)} ROI · ${paybackStr}</div>
+      </div>
+    </div>
+
+    <div class="roi-breakdown">
+      <div class="roi-row add">
+        <span class="lbl">Time savings (HR admin automation)</span>
+        <span class="val">+$${fmtInt(r.timeSavings)}</span>
+      </div>
+      <div class="roi-row add">
+        <span class="lbl">Retention savings (lower attrition)</span>
+        <span class="val">+$${fmtInt(r.retSavings)}</span>
+      </div>
+      <div class="roi-row subtract">
+        <span class="lbl">Teamflect annual cost</span>
+        <span class="val">−$${fmtInt(r.annualCost)}</span>
+      </div>
+      <div class="roi-row total">
+        <span class="lbl">Net annual benefit</span>
+        <span class="val">${r.netAnnual >= 0 ? '+' : '−'}$${fmtInt(Math.abs(r.netAnnual))}</span>
+      </div>
+    </div>
+
+    <div class="roi-breakdown" style="margin-top:8px">
+      <div class="roi-row">
+        <span class="lbl">Hours reclaimed across org</span>
+        <span class="val" style="color: var(--ink)">${fmtInt(r.hoursSaved)} hrs/year</span>
+      </div>
+      <div class="roi-row">
+        <span class="lbl">Per-user hourly rate</span>
+        <span class="val" style="color: var(--ink)">$${fmt(r.hourly)}/hr</span>
+      </div>
+    </div>
+
+    <div class="roi-actions">
+      <button class="btn" id="copyROIBtn">Copy ROI summary</button>
+    </div>
+  `;
+
+  document.getElementById('copyROIBtn').addEventListener('click', () => copyROI(r));
+}
+
+/* Build the ROI summary the rep pastes anywhere. Returns BOTH formats:
+   - plain: Notepad-safe, uses **bold** markdown-style markers for emphasis
+   - html:  rich text for Outlook / Teams / Gmail / Word with real <b> tags
+
+   HTML format notes:
+   - Outlook renders <p> margins inconsistently and adds extra vertical space.
+   - To get consistent normal line spacing we use a single <div> wrapper plus
+     <br><br> for paragraph breaks. Same visual result, predictable in Outlook.
+   - No em dashes anywhere. Customer-facing copy should read like a sales rep
+     wrote it, not a model. */
+function roiText(r) {
+  const planLabel = state.plan.charAt(0).toUpperCase() + state.plan.slice(1);
+  const countryName = (COUNTRIES.find(c => c.code === state.country) || {}).name || state.country;
+  const efficiencyPct = state.plan === 'essential' ? '6.5%' : '9.5%';
+
+  // Headline numbers as strings (used in both formats)
+  const netStr      = '$' + fmtInt(Math.abs(r.netAnnual));
+  const timeStr     = '$' + fmtInt(r.timeSavings);
+  const retStr      = '$' + fmtInt(r.retSavings);
+  const totalStr    = '$' + fmtInt(r.totalSavings);
+  const costStr     = '$' + fmtInt(r.annualCost);
+  const hoursStr    = fmtInt(r.hoursSaved) + ' hours';
+  const roiPctStr   = pct(r.roiPct/100);
+
+  // Payback phrasing
+  let paybackPhrase;
+  if (r.paybackMo == null) {
+    paybackPhrase = null;
+  } else if (r.paybackMo < 1) {
+    paybackPhrase = 'under 1 month';
+  } else {
+    paybackPhrase = `roughly ${r.paybackMo.toFixed(1)} months`;
+  }
+
+  // ===== Lead sentence =====
+  let leadPlain, leadHtml;
+  if (r.netAnnual >= 0 && paybackPhrase) {
+    leadPlain = `When I ran your numbers through our ROI calculator, it looks like Teamflect would return roughly **${netStr}** per year, with payback in **${paybackPhrase}**. Of that, **${timeStr}** comes from time savings on HR admin work, and **${retStr}** comes from reduced attrition.`;
+    leadHtml  = `When I ran your numbers through our ROI calculator, it looks like Teamflect would return roughly <b>${netStr}</b> per year, with payback in <b>${paybackPhrase}</b>. Of that, <b>${timeStr}</b> comes from time savings on HR admin work, and <b>${retStr}</b> comes from reduced attrition.`;
+  } else {
+    leadPlain = `When I ran your numbers through our ROI calculator, the savings come out to **${totalStr}** per year (**${timeStr}** from time savings and **${retStr}** from reduced attrition), against an annual Teamflect cost of **${costStr}**. Worth running through the assumptions together. Small adjustments to the salary or operational hours often change the picture.`;
+    leadHtml  = `When I ran your numbers through our ROI calculator, the savings come out to <b>${totalStr}</b> per year (<b>${timeStr}</b> from time savings and <b>${retStr}</b> from reduced attrition), against an annual Teamflect cost of <b>${costStr}</b>. Worth running through the assumptions together. Small adjustments to the salary or operational hours often change the picture.`;
+  }
+
+  // ===== Inputs sentence =====
+  const inputsLine = `These numbers are based on ${fmtInt(r.users)} employees in ${countryName}, an average annual salary of $${fmtInt(r.salary)}, an annual attrition rate of ${r.attr}%, and about ${r.opsHrs} hour${r.opsHrs === 1 ? '' : 's'} per employee per week spent on HR admin.`;
+
+  // ===== Logic section — tight, one sentence per bucket =====
+  const logicLeadPlain = `Here is the logic behind the calculation:`;
+  const logicLeadHtml  = `<b>Here is the logic behind the calculation:</b>`;
+
+  const bucket1Plain = `**Time savings.** Teamflect automates roughly ${efficiencyPct} of the HR admin work your team does each week (reviews, goals, feedback, 1:1 prep), which works out to **${hoursStr}** reclaimed per year at the team's hourly cost.`;
+  const bucket1Html  = `<b>Time savings.</b> Teamflect automates roughly ${efficiencyPct} of the HR admin work your team does each week (reviews, goals, feedback, 1:1 prep), which works out to <b>${hoursStr}</b> reclaimed per year at the team's hourly cost.`;
+
+  const bucket2Plain = `**Retention savings.** Replacing an employee costs roughly half their annual salary. Teamflect typically reduces attrition by a small amount through better engagement, which applied to your numbers comes out to **${retStr}** per year.`;
+  const bucket2Html  = `<b>Retention savings.</b> Replacing an employee costs roughly half their annual salary. Teamflect typically reduces attrition by a small amount through better engagement, which applied to your numbers comes out to <b>${retStr}</b> per year.`;
+
+  // ===== Closing line =====
+  const closingLinePlain = r.netAnnual >= 0 && paybackPhrase
+    ? `Net of the **${costStr}** annual Teamflect cost, that lands at a **${roiPctStr} ROI**. These are conservative estimates and most customers see better numbers in practice.`
+    : `These are conservative estimates and most customers see better numbers in practice once the team is fully onboarded.`;
+  const closingLineHtml = r.netAnnual >= 0 && paybackPhrase
+    ? `Net of the <b>${costStr}</b> annual Teamflect cost, that lands at a <b>${roiPctStr} ROI</b>. These are conservative estimates and most customers see better numbers in practice.`
+    : `These are conservative estimates and most customers see better numbers in practice once the team is fully onboarded.`;
+
+  // ===== Assemble — plain text uses blank lines, HTML uses <br><br> =====
+  const plain = `${leadPlain}
+
+${inputsLine}
+
+${logicLeadPlain}
+
+${bucket1Plain}
+
+${bucket2Plain}
+
+${closingLinePlain}`;
+
+  // Single <div>, normal line-height, <br><br> between paragraphs.
+  // No <p> tags, no margins. Outlook will render this with consistent spacing.
+  const html = `<div style="font-family: 'Segoe UI', Arial, sans-serif; font-size: 14px; line-height: 1.4; color: #1a1a1a;">${leadHtml}<br><br>${inputsLine}<br><br>${logicLeadHtml}<br><br>${bucket1Html}<br><br>${bucket2Html}<br><br>${closingLineHtml}</div>`;
+
+  return { plain, html };
+}
+
+function copyROI(r) {
+  const { plain, html } = roiText(r);
+
+  if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+    const item = new ClipboardItem({
+      'text/html':  new Blob([html],  { type: 'text/html' }),
+      'text/plain': new Blob([plain], { type: 'text/plain' })
+    });
+    navigator.clipboard.write([item]).then(showToast).catch(() => {
+      navigator.clipboard.writeText(plain).then(showToast);
+    });
+  } else {
+    navigator.clipboard.writeText(plain).then(showToast);
+  }
+}
+
+/* =========================================================================
+   SHARE HELPERS
+   ========================================================================= */
+
+/* Build the header line for a given plan name:
+   "Essential plan for 100 users, 2 year agreement (annual installments)"
+   Adapts to monthly, 1-year, multi-year upfront, multi-year installments. */
+function quoteHeaderLine(r, planName) {
+  const planLabel = planName.charAt(0).toUpperCase() + planName.slice(1);
+  const usersStr  = fmtInt(r.users) + ' users';
+
+  if (r.billing === 'monthly') {
+    return `${planLabel} plan for ${usersStr}, monthly billing (no commitment)`;
+  }
+  if (r.termYears === 1) {
+    return `${planLabel} plan for ${usersStr}, 1 year agreement`;
+  }
+  const paymentLabel = r.payment === 'upfront' ? 'paid upfront' : 'annual installments';
+  return `${planLabel} plan for ${usersStr}, ${r.termYears} year agreement (${paymentLabel})`;
+}
+
+/* Build the math equation line:
+   "100 users x $9.35 x 36 months = $33,660 USD for 3 years ($11,220 USD/year) - 15.0% discounted"
+   Edge cases:
+     - Monthly: drop "for X years" and per-year suffix
+     - 1-year annual or upfront multi-year: drop per-year suffix (only one payment)
+     - Multi-year installments: include per-year breakdown */
+function quoteEquationLine(r) {
+  const usersStr   = fmtInt(r.users);
+  const priceStr   = '$' + fmt(r.effectivePerUserPerMonth);
+  const monthsStr  = r.months + (r.months === 1 ? ' month' : ' months');
+  const totalStr   = '$' + fmtInt(r.discountedTotal) + ' USD';
+  const discountStr = pct(r.totalDiscount) + ' discounted';
+
+  let suffix = '';
+  if (r.billing === 'annual') {
+    if (r.termYears === 1) {
+      suffix = ' for 1 year';
+    } else {
+      suffix = ` for ${r.termYears} years`;
+      if (r.payment === 'installments') {
+        suffix += ` ($${fmtInt(r.perYearAmount)} USD/year)`;
+      }
+    }
+  }
+
+  return `${usersStr} users x ${priceStr} x ${monthsStr} = ${totalStr}${suffix} - ${discountStr}`;
+}
+
+/* Compute the quote result for an arbitrary plan, using the current state for
+   everything else (users, country, billing, term, payment, modules, non-profit).
+   Used to generate the Essential + Professional comparison block. */
+function calculateForPlan(planCode) {
+  const stateForPlan = Object.assign({}, state, { plan: planCode });
+  return calculate(stateForPlan);
+}
+
+/* Two-line block for one plan: underlined header + equation line. */
+function quoteBlock(planCode) {
+  const r = calculateForPlan(planCode);
+  return `${quoteHeaderLine(r, planCode)}\n${quoteEquationLine(r)}`;
+}
+
+/* HTML version of one plan's block, with underlined+bold header.
+   Renders as proper underline in Outlook / Teams / Gmail / Word. */
+function quoteBlockHtml(planCode) {
+  const r = calculateForPlan(planCode);
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<u><b>${esc(quoteHeaderLine(r, planCode))}</b></u><br>${esc(quoteEquationLine(r))}`;
+}
+
+/* Build the full plain-text quote: Essential first, blank line, Professional,
+   blank line, expiration date.
+   This is what goes onto the clipboard regardless of which plan the rep has
+   currently selected — so the customer sees both options side by side. */
+function quoteExpirationDate() {
+  // 14 days from today, formatted as "Month D, YYYY" (e.g. "June 7, 2026").
+  // Using en-US long format for locale-independence in international deals.
+  const d = new Date();
+  d.setDate(d.getDate() + 14);
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function quoteText() {
+  return `${quoteBlock('essential')}\n\n${quoteBlock('professional')}\n\nExpiration date: ${quoteExpirationDate()}`;
+}
+
+/* HTML version of the full two-plan quote, with both headers underlined and
+   "Expiration date:" bolded (date itself stays non-bold). */
+function quoteHtml() {
+  return `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1a1a1a; line-height: 1.5;">
+${quoteBlockHtml('essential')}
+<br><br>
+${quoteBlockHtml('professional')}
+<br><br>
+<b>Expiration date:</b> ${quoteExpirationDate()}
+</div>`;
+}
+
+function copyQuote() {
+  const plain = quoteText();
+  const html  = quoteHtml();
+
+  // Modern path: write both HTML and plain-text so rich editors get the underline,
+  // and plain-text destinations still get usable content.
+  if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+    const item = new ClipboardItem({
+      'text/html':  new Blob([html],  { type: 'text/html' }),
+      'text/plain': new Blob([plain], { type: 'text/plain' })
+    });
+    navigator.clipboard.write([item]).then(showToast).catch(() => {
+      // Fallback if browser blocks the rich write
+      navigator.clipboard.writeText(plain).then(showToast);
+    });
+  } else {
+    // Older browsers — plain text only
+    navigator.clipboard.writeText(plain).then(showToast);
+  }
+}
+
+function emailQuote(r) {
+  const planLabel = state.plan.charAt(0).toUpperCase() + state.plan.slice(1);
+  const subject = encodeURIComponent(
+    `Additional discount request for ${fmtInt(r.users)} users, ${planLabel} plan`
+  );
+
+  // Email body uses ONLY the currently-selected plan — Jan needs to know
+  // which specific plan the rep is asking him to discount further.
+  // Mailto body is plain text only — newlines via \r\n for broadest client compatibility.
+  const singlePlanBlock = quoteBlock(state.plan).replace(/\n/g, '\r\n');
+  const intro = `Hi Jan,\r\n\r\nRequesting an additional discount on the following quote:\r\n\r\n`;
+  const body = encodeURIComponent(intro + singlePlanBlock + `\r\n\r\nThanks!`);
+
+  window.location.href = `mailto:jan@teamflect.com?cc=seha@teamflect.com&subject=${subject}&body=${body}`;
+}
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+/* =========================================================================
+   INIT
+   ========================================================================= */
+function initCountrySelect() {
+  const sel = document.getElementById('country');
+  const sorted = [...COUNTRIES].sort((a, b) => {
+    if (a.code === 'US') return -1;
+    if (b.code === 'US') return 1;
+    return a.name.localeCompare(b.name);
+  });
+  sel.innerHTML = sorted.map(c => `<option value="${c.code}">${c.name}</option>`).join('');
+  sel.value = 'US';
+}
+
+function bindSegmentedGroup(id, key, parser) {
+  const group = document.getElementById(id);
+  group.querySelectorAll('.seg').forEach(btn => {
+    btn.addEventListener('click', () => {
+      group.querySelectorAll('.seg').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state[key] = parser ? parser(btn.dataset.value) : btn.dataset.value;
+      render();
+    });
+  });
+}
+
+function init() {
+  initCountrySelect();
+  bindSegmentedGroup('modules', 'modules');
+  bindSegmentedGroup('plan', 'plan');
+  bindSegmentedGroup('billing', 'billing');
+  bindSegmentedGroup('term', 'termYears', v => parseInt(v));
+  bindSegmentedGroup('payment', 'payment');
+
+  document.getElementById('users').addEventListener('input', e => {
+    state.users = parseInt(e.target.value) || 0;
+    render();
+  });
+
+  document.getElementById('country').addEventListener('change', e => {
+    state.country = e.target.value;
+    render();
+  });
+
+  document.getElementById('nonprofit').addEventListener('change', e => {
+    state.nonprofit = e.target.checked;
+    render();
+  });
+
+  // ROI input wiring
+  const salaryEl = document.getElementById('roiSalary');
+  salaryEl.value = countrySalary(state.country); // initial default
+  salaryEl.addEventListener('input', e => {
+    state.roi.salary = parseFloat(e.target.value) || 0;
+    state.roi.salaryUserEdited = true;
+    renderROI();
+  });
+  // Right-click or focus-out on an empty salary field resets it to follow the country default
+  salaryEl.addEventListener('dblclick', () => {
+    state.roi.salary = null;
+    state.roi.salaryUserEdited = false;
+    salaryEl.value = countrySalary(state.country);
+    renderROI();
+  });
+
+  document.getElementById('roiAttrition').addEventListener('input', e => {
+    state.roi.attrition = parseFloat(e.target.value) || 0;
+    renderROI();
+  });
+
+  document.getElementById('roiOpsHours').addEventListener('input', e => {
+    state.roi.opsHours = parseFloat(e.target.value) || 0;
+    renderROI();
+  });
+
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
