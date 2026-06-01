@@ -598,15 +598,17 @@
 
   .actions {
     display: flex;
-    gap: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
     margin-top: 24px;
     padding-top: 20px;
     border-top: 1px solid rgba(255,255,255,0.08);
   }
 
   .btn {
-    flex: 1;
-    padding: 12px 16px;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 11px 12px;
     border-radius: 10px;
     border: 1px solid rgba(255,255,255,0.12);
     background: rgba(255,255,255,0.05);
@@ -616,6 +618,7 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s;
+    white-space: nowrap;
   }
 
   .btn:hover {
@@ -1194,11 +1197,13 @@ function render() {
 
     <div class="actions">
       <button class="btn" id="copyBtn">Copy quote</button>
+      <button class="btn" id="copyTiersBtn">Copy pricing tiers</button>
       <button class="btn primary" id="emailBtn">Email Jan for additional discount</button>
     </div>
   `;
 
   document.getElementById('copyBtn').addEventListener('click', () => copyQuote());
+  document.getElementById('copyTiersBtn').addEventListener('click', () => copyPricingTiers());
   document.getElementById('emailBtn').addEventListener('click', () => emailQuote(r));
 
   // ROI panel reacts to the same state changes (users, plan, discounted price)
@@ -1568,6 +1573,172 @@ function copyQuote() {
     });
   } else {
     // Older browsers — plain text only
+    navigator.clipboard.writeText(plain).then(showToast);
+  }
+}
+
+/* =========================================================================
+   PRICING TIERS — show how price-per-user changes at higher user counts.
+   The point of this output is to show the customer that volume discounts
+   compound with size, so buying all licenses in one agreement is cheaper
+   than fragmenting the purchase into multiple smaller orders. Each tier
+   shows the per-seat price at THAT tier's volume bracket, applying all
+   other discounts (modules, country, non-profit, multi-year, Pro bonus)
+   consistently so the only varying lever is volume.
+   ========================================================================= */
+
+/* Generate 5 user-count tiers starting from the current user count and climbing.
+   Snaps to volume-discount breakpoints (50/100/250/500/1000/2500/5000) where
+   reasonable so each row lands on a natural rate cliff. */
+function generateTierUserCounts(currentUsers) {
+  const u = Math.max(1, parseInt(currentUsers) || 0);
+  const breakpoints = [50, 100, 250, 500, 1000, 2500, 5000];
+
+  // Always include the current user count as the first row, then take the
+  // next 4 breakpoints above it. If we run out of breakpoints, extrapolate.
+  const tiers = [u];
+  for (const b of breakpoints) {
+    if (b > u && tiers.length < 5) tiers.push(b);
+  }
+  // If still short (current is >= 5000), extrapolate above
+  let next = Math.max(u, 5000);
+  while (tiers.length < 5) {
+    next = next < 5000 ? 5000 : next + 2500;
+    tiers.push(next);
+  }
+  return tiers;
+}
+
+/* Compute price details for a hypothetical user count, using the rest of the
+   current state (plan, modules, country, etc.). */
+function calculateForUsers(users) {
+  const s = Object.assign({}, state, { users });
+  return calculate(s);
+}
+
+/* Build the rows that go in the table: each row has user count, per-user
+   monthly price, total monthly cost, and effective discount % at that tier. */
+function buildTierRows() {
+  const counts = generateTierUserCounts(state.users);
+  return counts.map(u => {
+    const r = calculateForUsers(u);
+    // Per-user/month is the same regardless of billing cadence in the engine,
+    // but discountedTotal varies. We want the *monthly* total at each tier,
+    // applying all configured discounts (term, payment, etc.) consistently.
+    const perUserPerMonth = r.effectivePerUserPerMonth;
+    const totalPerMonth   = perUserPerMonth * u;
+    return {
+      users: u,
+      perUserPerMonth,
+      totalPerMonth,
+      totalDiscount: r.totalDiscount,
+      isCurrent: u === parseInt(state.users)
+    };
+  });
+}
+
+/* Build the table as both plain text (ASCII-aligned) and HTML.
+   The HTML version renders as a real table in Outlook/Teams/Gmail. */
+function pricingTiersText() {
+  // Enterprise has no price ladder — skip the table entirely
+  if (state.plan === 'enterprise') {
+    return {
+      plain: 'Pricing tiers are not generated for Enterprise plans. Please contact Jan for tailored Enterprise pricing.',
+      html:  '<div style="font-family: Arial, sans-serif; font-size: 14px;">Pricing tiers are not generated for Enterprise plans. Please contact Jan for tailored Enterprise pricing.</div>'
+    };
+  }
+
+  const rows = buildTierRows();
+  const planLabel = state.plan.charAt(0).toUpperCase() + state.plan.slice(1);
+
+  // Agreement context line — so the customer knows these tiers reflect their
+  // negotiated terms (multi-year, upfront, etc.), not raw list prices
+  let agreementContext;
+  if (state.billing === 'monthly') {
+    agreementContext = 'monthly billing, no commitment';
+  } else if (state.termYears === 1) {
+    agreementContext = '1-year agreement';
+  } else {
+    const paymentLabel = state.payment === 'upfront' ? 'paid upfront' : 'annual installments';
+    agreementContext = `${state.termYears}-year agreement, ${paymentLabel}`;
+  }
+
+  const headline = `${planLabel} plan pricing by user count (${agreementContext})`;
+
+  // ===== Plain text version — column-aligned monospace =====
+  const fmtCell = (s, w) => String(s).padEnd(w);
+  const colW = { users: 12, perUser: 18, total: 20, disc: 11 };
+
+  let plainTable = '';
+  plainTable += fmtCell('User count', colW.users) + fmtCell('Per user / month', colW.perUser) + fmtCell('Total / month', colW.total) + fmtCell('Discount', colW.disc) + '\n';
+  plainTable += fmtCell('-'.repeat(colW.users - 2), colW.users) + fmtCell('-'.repeat(colW.perUser - 2), colW.perUser) + fmtCell('-'.repeat(colW.total - 2), colW.total) + fmtCell('-'.repeat(colW.disc - 2), colW.disc) + '\n';
+  for (const row of rows) {
+    const marker = row.isCurrent ? ' *' : '';
+    plainTable += fmtCell(fmtInt(row.users) + marker, colW.users);
+    plainTable += fmtCell('$' + fmt(row.perUserPerMonth), colW.perUser);
+    plainTable += fmtCell('$' + fmtInt(row.totalPerMonth), colW.total);
+    plainTable += fmtCell(pct(row.totalDiscount), colW.disc);
+    plainTable += '\n';
+  }
+
+  const closingPlain = `\n* indicates your current quoted user count.
+
+Locking in all licenses in a single agreement secures the deepest volume discount from day one. Adding seats in separate purchases later means each additional batch is priced at the volume tier of that batch alone, not the cumulative total.`;
+
+  const plain = `${headline}\n\n${plainTable}${closingPlain}`;
+
+  // ===== HTML version — real table for Outlook =====
+  // Inline styles only. Outlook strips <style> blocks. Borders via attribute
+  // and inline style for double safety.
+  const th = 'padding: 8px 14px; text-align: left; background: #f0ece4; border: 1px solid #d4cfc3; font-weight: 600; font-size: 13px;';
+  const td = 'padding: 8px 14px; border: 1px solid #d4cfc3; font-size: 13px;';
+  const tdRight = td + ' text-align: right; font-variant-numeric: tabular-nums;';
+  const tdCurrent = 'background: #fffbe6; font-weight: 600;';
+
+  let htmlRows = '';
+  for (const row of rows) {
+    const rowBg = row.isCurrent ? tdCurrent : '';
+    const marker = row.isCurrent ? ' <span style="color: #b45309; font-weight: 700;">★</span>' : '';
+    htmlRows += `<tr>
+      <td style="${td}${rowBg}">${fmtInt(row.users)}${marker}</td>
+      <td style="${tdRight}${rowBg}">$${fmt(row.perUserPerMonth)}</td>
+      <td style="${tdRight}${rowBg}">$${fmtInt(row.totalPerMonth)}</td>
+      <td style="${tdRight}${rowBg}">${pct(row.totalDiscount)}</td>
+    </tr>`;
+  }
+
+  const html = `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1a1a1a; line-height: 1.5;">
+<p style="margin: 0 0 12px;"><b>${headline}</b></p>
+<table cellspacing="0" cellpadding="0" border="1" style="border-collapse: collapse; border: 1px solid #d4cfc3;">
+  <thead>
+    <tr>
+      <th style="${th}">User count</th>
+      <th style="${th} text-align: right;">Per user / month</th>
+      <th style="${th} text-align: right;">Total / month</th>
+      <th style="${th} text-align: right;">Discount</th>
+    </tr>
+  </thead>
+  <tbody>${htmlRows}</tbody>
+</table>
+<p style="margin: 12px 0 0; font-size: 13px;"><span style="color: #b45309;">★</span> indicates the user count in your current quote.</p>
+<p style="margin: 8px 0 0; font-size: 13px;">Locking in all licenses in a single agreement secures the deepest volume discount from day one. Adding seats in separate purchases later means each additional batch is priced at the volume tier of that batch alone, not the cumulative total.</p>
+</div>`;
+
+  return { plain, html };
+}
+
+function copyPricingTiers() {
+  const { plain, html } = pricingTiersText();
+
+  if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+    const item = new ClipboardItem({
+      'text/html':  new Blob([html],  { type: 'text/html' }),
+      'text/plain': new Blob([plain], { type: 'text/plain' })
+    });
+    navigator.clipboard.write([item]).then(showToast).catch(() => {
+      navigator.clipboard.writeText(plain).then(showToast);
+    });
+  } else {
     navigator.clipboard.writeText(plain).then(showToast);
   }
 }
