@@ -1197,7 +1197,7 @@ function render() {
 
     <div class="actions">
       <button class="btn" id="copyBtn">Copy quote</button>
-      <button class="btn" id="copyTiersBtn">Copy pricing tiers</button>
+      <button class="btn" id="copyTiersBtn">Copy tiered-pricing table</button>
       <button class="btn primary" id="emailBtn">Email Jan for additional discount</button>
     </div>
   `;
@@ -1540,8 +1540,29 @@ function quoteExpirationDate() {
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+/* Services included with every quote. Kept as a constant so it can be edited
+   in one place if the included-deliverables list changes. */
+const QUOTE_INCLUDES = [
+  'Assigned Customer Success Manager',
+  'Implementation support',
+  'Admin and end-user training',
+  'Unlimited support tickets',
+  'Access to reports'
+];
+
+/* Build the "These quotes include:" block in both formats.
+   Plain text uses bullet characters + line breaks (universally safe).
+   HTML uses the same bullet character + <br> tags rather than <ul>/<li>,
+   because Outlook renders list margins inconsistently. */
+function quoteIncludesPlain() {
+  return `These quotes include:\n${QUOTE_INCLUDES.map(s => `• ${s}`).join('\n')}`;
+}
+function quoteIncludesHtml() {
+  return `<b>These quotes include:</b><br>${QUOTE_INCLUDES.map(s => `• ${s}`).join('<br>')}`;
+}
+
 function quoteText() {
-  return `${quoteBlock('essential')}\n\n${quoteBlock('professional')}\n\nExpiration date: ${quoteExpirationDate()}`;
+  return `${quoteBlock('essential')}\n\n${quoteBlock('professional')}\n\nExpiration date: ${quoteExpirationDate()}\n\n${quoteIncludesPlain()}`;
 }
 
 /* HTML version of the full two-plan quote, with both headers underlined and
@@ -1553,6 +1574,8 @@ ${quoteBlockHtml('essential')}
 ${quoteBlockHtml('professional')}
 <br><br>
 <b>Expiration date:</b> ${quoteExpirationDate()}
+<br><br>
+${quoteIncludesHtml()}
 </div>`;
 }
 
@@ -1587,57 +1610,81 @@ function copyQuote() {
    consistently so the only varying lever is volume.
    ========================================================================= */
 
-/* Generate 5 user-count tiers starting from the current user count and climbing.
-   Snaps to volume-discount breakpoints (50/100/250/500/1000/2500/5000) where
-   reasonable so each row lands on a natural rate cliff. */
-function generateTierUserCounts(currentUsers) {
-  const u = Math.max(1, parseInt(currentUsers) || 0);
-  const breakpoints = [50, 100, 250, 500, 1000, 2500, 5000];
+/* Graduated tier bands for the "Copy pricing tiers" output.
+   These are SEPARATE from the volume curve used by the main calculator
+   (volumeDiscount()) — the main calculator uses single-tier volume pricing;
+   this graduated model is only used for the customer-facing tiers table to
+   illustrate how price-per-user steps down as headcount grows.
 
-  // Always include the current user count as the first row, then take the
-  // next 4 breakpoints above it. If we run out of breakpoints, extrapolate.
-  const tiers = [u];
-  for (const b of breakpoints) {
-    if (b > u && tiers.length < 5) tiers.push(b);
+   Each band: [startSeat, endSeat (inclusive), volumeDiscount]. Use Infinity
+   for the open-ended top tier. The 30-49 and 50-99 brackets in the volume
+   curve are merged here at their midpoint (6%) for a cleaner schedule. */
+const GRADUATED_BANDS = [
+  { start: 1,    end: 29,        discount: 0.00 },
+  { start: 30,   end: 99,        discount: 0.06 },
+  { start: 100,  end: 249,       discount: 0.13 },
+  { start: 250,  end: 499,       discount: 0.20 },
+  { start: 500,  end: 999,       discount: 0.27 },
+  { start: 1000, end: 2499,      discount: 0.34 },
+  { start: 2500, end: 4999,      discount: 0.40 },
+  { start: 5000, end: Infinity,  discount: 0.45 }
+];
+
+/* Compute the per-user/month price at a specific volume discount, applying
+   all OTHER configured discounts (module scope, country PPP, non-profit,
+   multi-year/payment terms, Pro plan bonus). The graduated bands only vary
+   the volume layer; everything else stacks consistently. */
+function priceAtVolumeDiscount(volumeDisc) {
+  const listPerUser = LIST_PRICES[state.plan][state.billing];
+  const dMod     = moduleDiscount(state.modules);
+  const dCountry = countryDiscount(state.country);
+  const dNonp    = state.nonprofit ? NONPROFIT_DISCOUNT : 0;
+  const dMulti   = multiYearDiscount(state.termYears, state.payment, state.billing);
+  const dPro     = state.plan === 'professional' ? PRO_PLAN_DISCOUNT : 0;
+
+  const multiplier =
+    (1 - volumeDisc) *
+    (1 - dMod) *
+    (1 - dCountry) *
+    (1 - dNonp) *
+    (1 - dMulti) *
+    (1 - dPro);
+
+  return listPerUser * multiplier;
+}
+
+/* Format a band's range label: "1-29", "5,000+", etc. */
+function bandLabel(band) {
+  if (band.end === Infinity) return `${fmtInt(band.start)}+`;
+  return `${fmtInt(band.start)}-${fmtInt(band.end)}`;
+}
+
+/* Slice the user's actual count across the graduated bands so we can show
+   the customer the math: "seats 1-29 at $X, seats 30-99 at $Y, ..." */
+function graduatedBreakdown(totalUsers) {
+  const slices = [];
+  let remaining = totalUsers;
+  for (const band of GRADUATED_BANDS) {
+    if (remaining <= 0) break;
+    const bandCapacity = (band.end === Infinity ? Infinity : band.end) - band.start + 1;
+    const seatsInBand  = Math.min(remaining, bandCapacity);
+    if (seatsInBand <= 0) continue;
+    // Only include the band if the customer's count actually reaches it
+    if (totalUsers >= band.start) {
+      slices.push({
+        band,
+        seats: Math.min(seatsInBand, totalUsers - band.start + 1),
+        perUserPerMonth: priceAtVolumeDiscount(band.discount)
+      });
+      remaining -= seatsInBand;
+    }
   }
-  // If still short (current is >= 5000), extrapolate above
-  let next = Math.max(u, 5000);
-  while (tiers.length < 5) {
-    next = next < 5000 ? 5000 : next + 2500;
-    tiers.push(next);
-  }
-  return tiers;
+  // Compute total monthly cost from slices
+  const totalMonthly = slices.reduce((sum, s) => sum + s.seats * s.perUserPerMonth, 0);
+  return { slices, totalMonthly };
 }
 
-/* Compute price details for a hypothetical user count, using the rest of the
-   current state (plan, modules, country, etc.). */
-function calculateForUsers(users) {
-  const s = Object.assign({}, state, { users });
-  return calculate(s);
-}
-
-/* Build the rows that go in the table: each row has user count, per-user
-   monthly price, total monthly cost, and effective discount % at that tier. */
-function buildTierRows() {
-  const counts = generateTierUserCounts(state.users);
-  return counts.map(u => {
-    const r = calculateForUsers(u);
-    // Per-user/month is the same regardless of billing cadence in the engine,
-    // but discountedTotal varies. We want the *monthly* total at each tier,
-    // applying all configured discounts (term, payment, etc.) consistently.
-    const perUserPerMonth = r.effectivePerUserPerMonth;
-    const totalPerMonth   = perUserPerMonth * u;
-    return {
-      users: u,
-      perUserPerMonth,
-      totalPerMonth,
-      totalDiscount: r.totalDiscount,
-      isCurrent: u === parseInt(state.users)
-    };
-  });
-}
-
-/* Build the table as both plain text (ASCII-aligned) and HTML.
+/* Build the table + breakdown as both plain text and HTML.
    The HTML version renders as a real table in Outlook/Teams/Gmail. */
 function pricingTiersText() {
   // Enterprise has no price ladder — skip the table entirely
@@ -1648,11 +1695,10 @@ function pricingTiersText() {
     };
   }
 
-  const rows = buildTierRows();
+  const userCount = Math.max(1, parseInt(state.users) || 0);
   const planLabel = state.plan.charAt(0).toUpperCase() + state.plan.slice(1);
 
-  // Agreement context line — so the customer knows these tiers reflect their
-  // negotiated terms (multi-year, upfront, etc.), not raw list prices
+  // Agreement context line — reflects the rep's currently-configured deal
   let agreementContext;
   if (state.billing === 'monthly') {
     agreementContext = 'monthly billing, no commitment';
@@ -1663,65 +1709,107 @@ function pricingTiersText() {
     agreementContext = `${state.termYears}-year agreement, ${paymentLabel}`;
   }
 
-  const headline = `${planLabel} plan pricing by user count (${agreementContext})`;
+  const headline = `${planLabel} plan graduated pricing schedule (${agreementContext})`;
+
+  // Compute per-band rates
+  const bandRows = GRADUATED_BANDS.map(band => {
+    const perUser = priceAtVolumeDiscount(band.discount);
+    return {
+      label: bandLabel(band),
+      perUserPerMonth: perUser,
+      discount: band.discount,
+      isCurrent: userCount >= band.start && (band.end === Infinity || userCount <= band.end)
+    };
+  });
+
+  // Compute the customer's actual breakdown across bands
+  const { slices, totalMonthly } = graduatedBreakdown(userCount);
+  const breakdownPlain = slices.map(s =>
+    `  ${fmtInt(s.seats)} seats × $${fmt(s.perUserPerMonth)} = $${fmtInt(s.seats * s.perUserPerMonth)}/mo  (${bandLabel(s.band)} tier)`
+  ).join('\n');
 
   // ===== Plain text version — column-aligned monospace =====
   const fmtCell = (s, w) => String(s).padEnd(w);
-  const colW = { users: 12, perUser: 18, total: 20, disc: 11 };
+  const colW = { range: 14, perUser: 22, disc: 11 };
 
   let plainTable = '';
-  plainTable += fmtCell('User count', colW.users) + fmtCell('Per user / month', colW.perUser) + fmtCell('Total / month', colW.total) + fmtCell('Discount', colW.disc) + '\n';
-  plainTable += fmtCell('-'.repeat(colW.users - 2), colW.users) + fmtCell('-'.repeat(colW.perUser - 2), colW.perUser) + fmtCell('-'.repeat(colW.total - 2), colW.total) + fmtCell('-'.repeat(colW.disc - 2), colW.disc) + '\n';
-  for (const row of rows) {
+  plainTable += fmtCell('User range', colW.range) + fmtCell('Per user / month', colW.perUser) + fmtCell('Discount', colW.disc) + '\n';
+  plainTable += fmtCell('-'.repeat(colW.range - 2), colW.range) + fmtCell('-'.repeat(colW.perUser - 2), colW.perUser) + fmtCell('-'.repeat(colW.disc - 2), colW.disc) + '\n';
+  for (const row of bandRows) {
     const marker = row.isCurrent ? ' *' : '';
-    plainTable += fmtCell(fmtInt(row.users) + marker, colW.users);
+    plainTable += fmtCell(row.label + marker, colW.range);
     plainTable += fmtCell('$' + fmt(row.perUserPerMonth), colW.perUser);
-    plainTable += fmtCell('$' + fmtInt(row.totalPerMonth), colW.total);
-    plainTable += fmtCell(pct(row.totalDiscount), colW.disc);
+    plainTable += fmtCell(pct(row.discount), colW.disc);
     plainTable += '\n';
   }
 
-  const closingPlain = `\n* indicates your current quoted user count.
+  const plainBreakdownBlock = `For your ${fmtInt(userCount)} seats, the cost works out to:
 
-Locking in all licenses in a single agreement secures the deepest volume discount from day one. Adding seats in separate purchases later means each additional batch is priced at the volume tier of that batch alone, not the cumulative total.`;
+${breakdownPlain}
 
-  const plain = `${headline}\n\n${plainTable}${closingPlain}`;
+  Total: $${fmtInt(totalMonthly)} / month  ($${fmtInt(totalMonthly * 12)} / year)`;
+
+  const plainFootnote = `\n* indicates the tier where your current quoted user count lands.
+
+This is graduated pricing. Each seat is priced at the tier its position falls into, so the first 29 seats are priced at the entry rate, the next batch at the 30-99 rate, and so on. The more seats you have, the cheaper each additional seat becomes.`;
+
+  const plain = `${headline}\n\n${plainTable}\n${plainBreakdownBlock}\n${plainFootnote}`;
 
   // ===== HTML version — real table for Outlook =====
-  // Inline styles only. Outlook strips <style> blocks. Borders via attribute
-  // and inline style for double safety.
   const th = 'padding: 8px 14px; text-align: left; background: #f0ece4; border: 1px solid #d4cfc3; font-weight: 600; font-size: 13px;';
   const td = 'padding: 8px 14px; border: 1px solid #d4cfc3; font-size: 13px;';
   const tdRight = td + ' text-align: right; font-variant-numeric: tabular-nums;';
   const tdCurrent = 'background: #fffbe6; font-weight: 600;';
 
   let htmlRows = '';
-  for (const row of rows) {
+  for (const row of bandRows) {
     const rowBg = row.isCurrent ? tdCurrent : '';
     const marker = row.isCurrent ? ' <span style="color: #b45309; font-weight: 700;">★</span>' : '';
     htmlRows += `<tr>
-      <td style="${td}${rowBg}">${fmtInt(row.users)}${marker}</td>
+      <td style="${td}${rowBg}">${row.label}${marker}</td>
       <td style="${tdRight}${rowBg}">$${fmt(row.perUserPerMonth)}</td>
-      <td style="${tdRight}${rowBg}">$${fmtInt(row.totalPerMonth)}</td>
-      <td style="${tdRight}${rowBg}">${pct(row.totalDiscount)}</td>
+      <td style="${tdRight}${rowBg}">${pct(row.discount)}</td>
     </tr>`;
   }
+
+  // Breakdown block in HTML — small clean table
+  const tdSm = 'padding: 4px 10px; font-size: 13px;';
+  const tdSmRight = tdSm + ' text-align: right; font-variant-numeric: tabular-nums;';
+  let breakdownHtmlRows = '';
+  for (const s of slices) {
+    breakdownHtmlRows += `<tr>
+      <td style="${tdSm}">${fmtInt(s.seats)} seats</td>
+      <td style="${tdSm} color: #6b6b6b;">×</td>
+      <td style="${tdSmRight}">$${fmt(s.perUserPerMonth)}</td>
+      <td style="${tdSm} color: #6b6b6b;">=</td>
+      <td style="${tdSmRight}">$${fmtInt(s.seats * s.perUserPerMonth)}/mo</td>
+      <td style="${tdSm} color: #6b6b6b;">(${bandLabel(s.band)} tier)</td>
+    </tr>`;
+  }
+  breakdownHtmlRows += `<tr>
+    <td style="${tdSm} border-top: 1px solid #d4cfc3; font-weight: 700; padding-top: 8px;" colspan="4">Total</td>
+    <td style="${tdSmRight} border-top: 1px solid #d4cfc3; font-weight: 700; padding-top: 8px;">$${fmtInt(totalMonthly)}/mo</td>
+    <td style="${tdSm} border-top: 1px solid #d4cfc3; padding-top: 8px; color: #6b6b6b;">($${fmtInt(totalMonthly * 12)}/year)</td>
+  </tr>`;
 
   const html = `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1a1a1a; line-height: 1.5;">
 <p style="margin: 0 0 12px;"><b>${headline}</b></p>
 <table cellspacing="0" cellpadding="0" border="1" style="border-collapse: collapse; border: 1px solid #d4cfc3;">
   <thead>
     <tr>
-      <th style="${th}">User count</th>
+      <th style="${th}">User range</th>
       <th style="${th} text-align: right;">Per user / month</th>
-      <th style="${th} text-align: right;">Total / month</th>
       <th style="${th} text-align: right;">Discount</th>
     </tr>
   </thead>
   <tbody>${htmlRows}</tbody>
 </table>
-<p style="margin: 12px 0 0; font-size: 13px;"><span style="color: #b45309;">★</span> indicates the user count in your current quote.</p>
-<p style="margin: 8px 0 0; font-size: 13px;">Locking in all licenses in a single agreement secures the deepest volume discount from day one. Adding seats in separate purchases later means each additional batch is priced at the volume tier of that batch alone, not the cumulative total.</p>
+<p style="margin: 16px 0 6px;"><b>For your ${fmtInt(userCount)} seats, the cost works out to:</b></p>
+<table cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse; margin-bottom: 12px;">
+  <tbody>${breakdownHtmlRows}</tbody>
+</table>
+<p style="margin: 8px 0 0; font-size: 13px;"><span style="color: #b45309;">★</span> indicates the tier where your current quoted user count lands.</p>
+<p style="margin: 8px 0 0; font-size: 13px;">This is graduated pricing. Each seat is priced at the tier its position falls into, so the first 29 seats are priced at the entry rate, the next batch at the 30-99 rate, and so on. The more seats you have, the cheaper each additional seat becomes.</p>
 </div>`;
 
   return { plain, html };
