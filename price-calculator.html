@@ -1659,33 +1659,15 @@ function bandLabel(band) {
   return `${fmtInt(band.start)}-${fmtInt(band.end)}`;
 }
 
-/* Slice the user's actual count across the graduated bands so we can show
-   the customer the math: "seats 1-29 at $X, seats 30-99 at $Y, ..." */
-function graduatedBreakdown(totalUsers) {
-  const slices = [];
-  let remaining = totalUsers;
-  for (const band of GRADUATED_BANDS) {
-    if (remaining <= 0) break;
-    const bandCapacity = (band.end === Infinity ? Infinity : band.end) - band.start + 1;
-    const seatsInBand  = Math.min(remaining, bandCapacity);
-    if (seatsInBand <= 0) continue;
-    // Only include the band if the customer's count actually reaches it
-    if (totalUsers >= band.start) {
-      slices.push({
-        band,
-        seats: Math.min(seatsInBand, totalUsers - band.start + 1),
-        perUserPerMonth: priceAtVolumeDiscount(band.discount)
-      });
-      remaining -= seatsInBand;
-    }
-  }
-  // Compute total monthly cost from slices
-  const totalMonthly = slices.reduce((sum, s) => sum + s.seats * s.perUserPerMonth, 0);
-  return { slices, totalMonthly };
-}
+/* Build the table + quote line as both plain text and HTML.
+   The HTML version renders as a real table in Outlook/Teams/Gmail.
 
-/* Build the table + breakdown as both plain text and HTML.
-   The HTML version renders as a real table in Outlook/Teams/Gmail. */
+   Display rule: only show the customer's current band and bands ABOVE it.
+   Bands below would only be useful if the customer wanted to fragment their
+   purchase, which is exactly what we don't want to encourage. By hiding
+   them, the table becomes a growth roadmap rather than a piecemeal price
+   schedule, and the per-seat price the customer sees in the table matches
+   the quote exactly (no confusing discrepancy). */
 function pricingTiersText() {
   // Enterprise has no price ladder — skip the table entirely
   if (state.plan === 'enterprise') {
@@ -1709,24 +1691,26 @@ function pricingTiersText() {
     agreementContext = `${state.termYears}-year agreement, ${paymentLabel}`;
   }
 
-  const headline = `${planLabel} plan graduated pricing schedule (${agreementContext})`;
+  const headline = `${planLabel} plan pricing schedule (${agreementContext})`;
 
-  // Compute per-band rates
-  const bandRows = GRADUATED_BANDS.map(band => {
+  // Compute per-band rates and identify the customer's current band index
+  const allBandRows = GRADUATED_BANDS.map((band, idx) => {
     const perUser = priceAtVolumeDiscount(band.discount);
-    return {
-      label: bandLabel(band),
-      perUserPerMonth: perUser,
-      discount: band.discount,
-      isCurrent: userCount >= band.start && (band.end === Infinity || userCount <= band.end)
-    };
+    const isCurrent = userCount >= band.start && (band.end === Infinity || userCount <= band.end);
+    return { label: bandLabel(band), perUserPerMonth: perUser, discount: band.discount, isCurrent, idx };
   });
 
-  // Compute the customer's actual breakdown across bands
-  const { slices, totalMonthly } = graduatedBreakdown(userCount);
-  const breakdownPlain = slices.map(s =>
-    `  ${fmtInt(s.seats)} seats × $${fmt(s.perUserPerMonth)} = $${fmtInt(s.seats * s.perUserPerMonth)}/mo  (${bandLabel(s.band)} tier)`
-  ).join('\n');
+  // Show ONLY current band + bands above. Hides 1-29, 30-99, etc. for a
+  // 100-user customer — those tiers are only relevant for piecemeal buyers.
+  const currentIdx = allBandRows.findIndex(r => r.isCurrent);
+  const bandRows = allBandRows.slice(currentIdx);
+  const isTopTier = bandRows.length === 1;
+
+  // Customer's quote line — matches the main calculator exactly.
+  // Per-seat rate at the current band × seat count = monthly total.
+  const currentRate = allBandRows[currentIdx].perUserPerMonth;
+  const monthlyTotal = currentRate * userCount;
+  const annualTotal  = monthlyTotal * 12;
 
   // ===== Plain text version — column-aligned monospace =====
   const fmtCell = (s, w) => String(s).padEnd(w);
@@ -1743,17 +1727,13 @@ function pricingTiersText() {
     plainTable += '\n';
   }
 
-  const plainBreakdownBlock = `For your ${fmtInt(userCount)} seats, the cost works out to:
+  const plainQuoteLine = `Your current quote: ${fmtInt(userCount)} seats × $${fmt(currentRate)}/user/month = $${fmtInt(monthlyTotal)}/month ($${fmtInt(annualTotal)}/year)`;
 
-${breakdownPlain}
+  const plainFootnote = isTopTier
+    ? `\n* indicates the tier where your current quoted user count lands. You are already at the top volume tier — no further per-seat reductions are available above this count.`
+    : `\n* indicates the tier where your current quoted user count lands. As your deployment grows past each threshold above, the per-seat price drops automatically across the entire order. Locking in seats now and expanding through the same agreement avoids re-quoting at higher per-seat rates later.`;
 
-  Total: $${fmtInt(totalMonthly)} / month  ($${fmtInt(totalMonthly * 12)} / year)`;
-
-  const plainFootnote = `\n* indicates the tier where your current quoted user count lands.
-
-This is graduated pricing. Each seat is priced at the tier its position falls into, so the first 29 seats are priced at the entry rate, the next batch at the 30-99 rate, and so on. The more seats you have, the cheaper each additional seat becomes.`;
-
-  const plain = `${headline}\n\n${plainTable}\n${plainBreakdownBlock}\n${plainFootnote}`;
+  const plain = `${headline}\n\n${plainTable}\n${plainQuoteLine}\n${plainFootnote}`;
 
   // ===== HTML version — real table for Outlook =====
   const th = 'padding: 8px 14px; text-align: left; background: #f0ece4; border: 1px solid #d4cfc3; font-weight: 600; font-size: 13px;';
@@ -1772,25 +1752,9 @@ This is graduated pricing. Each seat is priced at the tier its position falls in
     </tr>`;
   }
 
-  // Breakdown block in HTML — small clean table
-  const tdSm = 'padding: 4px 10px; font-size: 13px;';
-  const tdSmRight = tdSm + ' text-align: right; font-variant-numeric: tabular-nums;';
-  let breakdownHtmlRows = '';
-  for (const s of slices) {
-    breakdownHtmlRows += `<tr>
-      <td style="${tdSm}">${fmtInt(s.seats)} seats</td>
-      <td style="${tdSm} color: #6b6b6b;">×</td>
-      <td style="${tdSmRight}">$${fmt(s.perUserPerMonth)}</td>
-      <td style="${tdSm} color: #6b6b6b;">=</td>
-      <td style="${tdSmRight}">$${fmtInt(s.seats * s.perUserPerMonth)}/mo</td>
-      <td style="${tdSm} color: #6b6b6b;">(${bandLabel(s.band)} tier)</td>
-    </tr>`;
-  }
-  breakdownHtmlRows += `<tr>
-    <td style="${tdSm} border-top: 1px solid #d4cfc3; font-weight: 700; padding-top: 8px;" colspan="4">Total</td>
-    <td style="${tdSmRight} border-top: 1px solid #d4cfc3; font-weight: 700; padding-top: 8px;">$${fmtInt(totalMonthly)}/mo</td>
-    <td style="${tdSm} border-top: 1px solid #d4cfc3; padding-top: 8px; color: #6b6b6b;">($${fmtInt(totalMonthly * 12)}/year)</td>
-  </tr>`;
+  const htmlFootnote = isTopTier
+    ? `<span style="color: #b45309;">★</span> indicates the tier where your current quoted user count lands. You are already at the top volume tier, so no further per-seat reductions are available above this count.`
+    : `<span style="color: #b45309;">★</span> indicates the tier where your current quoted user count lands. As your deployment grows past each threshold above, the per-seat price drops automatically across the entire order. Locking in seats now and expanding through the same agreement avoids re-quoting at higher per-seat rates later.`;
 
   const html = `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1a1a1a; line-height: 1.5;">
 <p style="margin: 0 0 12px;"><b>${headline}</b></p>
@@ -1804,12 +1768,8 @@ This is graduated pricing. Each seat is priced at the tier its position falls in
   </thead>
   <tbody>${htmlRows}</tbody>
 </table>
-<p style="margin: 16px 0 6px;"><b>For your ${fmtInt(userCount)} seats, the cost works out to:</b></p>
-<table cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse; margin-bottom: 12px;">
-  <tbody>${breakdownHtmlRows}</tbody>
-</table>
-<p style="margin: 8px 0 0; font-size: 13px;"><span style="color: #b45309;">★</span> indicates the tier where your current quoted user count lands.</p>
-<p style="margin: 8px 0 0; font-size: 13px;">This is graduated pricing. Each seat is priced at the tier its position falls into, so the first 29 seats are priced at the entry rate, the next batch at the 30-99 rate, and so on. The more seats you have, the cheaper each additional seat becomes.</p>
+<p style="margin: 16px 0 0;"><b>Your current quote:</b> ${fmtInt(userCount)} seats × $${fmt(currentRate)}/user/month = <b>$${fmtInt(monthlyTotal)}/month</b> ($${fmtInt(annualTotal)}/year)</p>
+<p style="margin: 12px 0 0; font-size: 13px;">${htmlFootnote}</p>
 </div>`;
 
   return { plain, html };
