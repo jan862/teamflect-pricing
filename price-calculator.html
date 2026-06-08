@@ -1562,7 +1562,7 @@ function quoteIncludesHtml() {
 }
 
 function quoteText() {
-  return `${quoteBlock('essential')}\n\n${quoteBlock('professional')}\n\nExpiration date: ${quoteExpirationDate()}\n\n${quoteIncludesPlain()}`;
+  return `${quoteBlock('essential')}\n\n${quoteBlock('professional')}\n\n${quoteIncludesPlain()}\n\nExpiration date: ${quoteExpirationDate()}`;
 }
 
 /* HTML version of the full two-plan quote, with both headers underlined and
@@ -1573,9 +1573,9 @@ ${quoteBlockHtml('essential')}
 <br><br>
 ${quoteBlockHtml('professional')}
 <br><br>
-<b>Expiration date:</b> ${quoteExpirationDate()}
-<br><br>
 ${quoteIncludesHtml()}
+<br><br>
+<b>Expiration date:</b> ${quoteExpirationDate()}
 </div>`;
 }
 
