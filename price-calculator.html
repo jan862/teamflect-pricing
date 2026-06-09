@@ -596,6 +596,66 @@
     font-weight: 600;
   }
 
+  /* Discount adjuster — up/down chevrons next to the effective discount value.
+     Lets the rep dial the discount DOWN from the calculator's max (floor).
+     Up arrow disabled when at max, down arrow disabled when at 0%. */
+  .disc-adjust {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .disc-adjust-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.06);
+    color: #f0ece4;
+    font-family: inherit;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.12s;
+    user-select: none;
+  }
+  .disc-adjust-btn:hover:not(:disabled) {
+    background: rgba(255,255,255,0.14);
+    border-color: rgba(255,255,255,0.32);
+  }
+  .disc-adjust-btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+  }
+  .disc-adjust-value {
+    color: #6ee7b7;
+    font-weight: 600;
+    min-width: 56px;
+    text-align: right;
+  }
+  .disc-adjust-meta {
+    font-size: 11px;
+    color: #999;
+    padding: 6px 0 0 0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  .disc-adjust-meta button {
+    background: none;
+    border: none;
+    color: #6b9aff;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+  }
+  .disc-adjust-meta button:hover { color: #94b6ff; }
+
   .actions {
     display: flex;
     flex-wrap: wrap;
@@ -965,6 +1025,14 @@ const state = {
   country: 'US',
   nonprofit: false,
 
+  // Rep-controlled discount reduction. Calculator returns the MAXIMUM discount
+  // we can offer (the floor price). Rep can reduce the discount by clicking
+  // arrows in the result panel — increments of 0.5 percentage points. Value
+  // stored as a positive number (e.g. 3 = "reduce the discount by 3 points").
+  // Capped so the rep can never push the discount below zero. Persists when
+  // the rep changes term/plan/etc.; only resets via the explicit reset button.
+  discountReduction: 0,
+
   // ROI inputs (mirrors the live website's calculator logic)
   roi: {
     salary: null,             // null = follow country default; once user types, it locks
@@ -1034,7 +1102,9 @@ function calculate(s) {
   const dMulti   = multiYearDiscount(s.termYears, s.payment, s.billing);
   const dPro     = s.plan === 'professional' ? PRO_PLAN_DISCOUNT : 0;
 
-  const multiplier =
+  // Compose all discount levers multiplicatively. This is the MAXIMUM discount
+  // we can offer (the floor price the rep should never go below).
+  const maxMultiplier =
     (1 - dVol) *
     (1 - dMod) *
     (1 - dCountry) *
@@ -1042,11 +1112,18 @@ function calculate(s) {
     (1 - dMulti) *
     (1 - dPro);
 
+  // The rep can manually reduce the discount by clicking arrows in the result
+  // panel (state.discountReduction in percentage points). We add that reduction
+  // back to the multiplier — but cap at 1.0 so we never go negative-discount.
+  const reductionFrac = Math.max(0, (state.discountReduction || 0) / 100);
+  const multiplier    = Math.min(1, maxMultiplier + reductionFrac);
+
   const effectivePerUserPerMonth = listPerUser * multiplier;
 
   const listTotal         = listPerUser * users * months;
   const discountedTotal   = effectivePerUserPerMonth * users * months;
   const totalDiscount     = 1 - multiplier;
+  const maxTotalDiscount  = 1 - maxMultiplier; // for the UI to show the ceiling
 
   // For multi-year installments: show per-year amount
   const isMultiYearInstall = s.billing === 'annual' && parseInt(s.termYears) > 1 && s.payment === 'installments';
@@ -1074,6 +1151,8 @@ function calculate(s) {
       proPlan:   dPro
     },
     totalDiscount,
+    maxTotalDiscount,
+    isReduced: state.discountReduction > 0,
     savings: listTotal - discountedTotal,
     countryName: (COUNTRIES.find(c => c.code === s.country) || {}).name || s.country
   };
@@ -1187,8 +1266,15 @@ function render() {
       ${discountRows.join('')}
       <div class="breakdown-row" style="border-top:1px solid rgba(255,255,255,0.12);padding-top:10px;margin-top:2px">
         <span class="breakdown-label" style="font-weight:600;color:#f0ece4">Effective total discount</span>
-        <span class="breakdown-value" style="color:#6ee7b7;font-weight:600">−${pct(r.totalDiscount)}</span>
+        <span class="disc-adjust">
+          <button class="disc-adjust-btn" id="discDown" ${r.totalDiscount <= 0.0005 ? 'disabled' : ''} title="Reduce discount by 0.5%">▼</button>
+          <span class="disc-adjust-value">−${pct(r.totalDiscount)}</span>
+          <button class="disc-adjust-btn" id="discUp" ${state.discountReduction <= 0 ? 'disabled' : ''} title="Increase discount by 0.5% (cannot exceed calculator maximum)">▲</button>
+        </span>
       </div>
+      ${r.isReduced ? `<div class="disc-adjust-meta">
+        Max available: −${pct(r.maxTotalDiscount)} · <button id="discReset" type="button">Reset to max</button>
+      </div>` : ''}
       <div class="breakdown-row">
         <span class="breakdown-label">List price per user / month</span>
         <span class="breakdown-value">$${fmt(r.listPerUser)}</span>
@@ -1205,6 +1291,35 @@ function render() {
   document.getElementById('copyBtn').addEventListener('click', () => copyQuote());
   document.getElementById('copyTiersBtn').addEventListener('click', () => copyPricingTiers());
   document.getElementById('emailBtn').addEventListener('click', () => emailQuote(r));
+
+  // Discount adjuster — down decreases discount (worse deal for customer),
+  // up increases discount back toward the calculator's max.
+  // Step: 0.5 percentage points. Floor: 0%. Ceiling: the calculator's max.
+  const STEP = 0.5;
+  const downBtn = document.getElementById('discDown');
+  const upBtn   = document.getElementById('discUp');
+  if (downBtn) {
+    downBtn.addEventListener('click', () => {
+      // Reducing the discount = increasing reduction
+      // But we can't reduce below 0% effective discount: cap reduction at maxTotalDiscount*100
+      const maxReduction = r.maxTotalDiscount * 100;
+      state.discountReduction = Math.min(maxReduction, (state.discountReduction || 0) + STEP);
+      render();
+    });
+  }
+  if (upBtn) {
+    upBtn.addEventListener('click', () => {
+      state.discountReduction = Math.max(0, (state.discountReduction || 0) - STEP);
+      render();
+    });
+  }
+  const resetBtn = document.getElementById('discReset');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      state.discountReduction = 0;
+      render();
+    });
+  }
 
   // ROI panel reacts to the same state changes (users, plan, discounted price)
   renderROI();
@@ -1642,13 +1757,18 @@ function priceAtVolumeDiscount(volumeDisc) {
   const dMulti   = multiYearDiscount(state.termYears, state.payment, state.billing);
   const dPro     = state.plan === 'professional' ? PRO_PLAN_DISCOUNT : 0;
 
-  const multiplier =
+  const maxMultiplier =
     (1 - volumeDisc) *
     (1 - dMod) *
     (1 - dCountry) *
     (1 - dNonp) *
     (1 - dMulti) *
     (1 - dPro);
+
+  // Apply the rep's manual discount reduction (same logic as calculate()).
+  // Keeps the tier table consistent with the main quote.
+  const reductionFrac = Math.max(0, (state.discountReduction || 0) / 100);
+  const multiplier    = Math.min(1, maxMultiplier + reductionFrac);
 
   return listPerUser * multiplier;
 }
