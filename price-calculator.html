@@ -464,6 +464,134 @@
     line-height: 1.4;
   }
 
+  /* ============ ENTERPRISE ADD-ONS ============
+     Flat annual fees that sit on top of the per-seat plan. Each row is a
+     label wrapping its own checkbox so the whole row is a click target.
+     A row whose prerequisite is unchecked gets .locked: input disabled,
+     row visually dimmed, and the requirement line turns amber. */
+  .addon-intro {
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin: -6px 0 14px;
+    line-height: 1.45;
+  }
+
+  .addon-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .addon-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px;
+    background: #faf8f3;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .addon-row:hover:not(.locked) { border-color: var(--border-strong); }
+
+  .addon-row.checked {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+  }
+
+  .addon-row.locked {
+    opacity: 0.55;
+    cursor: not-allowed;
+    background: #f4f2ed;
+  }
+
+  .addon-row input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    accent-color: var(--accent);
+    cursor: inherit;
+  }
+
+  .addon-body { flex: 1; min-width: 0; }
+
+  .addon-name {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .addon-price {
+    color: var(--accent-deep);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .addon-row.locked .addon-price { color: var(--ink-muted); }
+
+  .addon-hint {
+    display: block;
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin-top: 3px;
+    line-height: 1.4;
+  }
+
+  .addon-req {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    margin-top: 6px;
+  }
+  .addon-row.locked .addon-req { color: var(--warn); }
+
+  .addon-static {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px;
+    border: 1px dashed var(--border-strong);
+    border-radius: 10px;
+  }
+
+  .addon-static .addon-price {
+    color: var(--ink-muted);
+    font-weight: 500;
+    font-size: 12px;
+  }
+
+  /* Add-on summary inside the dark result card */
+  .addon-summary {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.12);
+  }
+
+  .grand-total {
+    margin-top: 14px;
+    padding: 14px;
+    background: rgba(37, 99, 235, 0.16);
+    border: 1px solid rgba(37, 99, 235, 0.45);
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .grand-total .lbl { font-size: 13px; color: #dbe6ff; font-weight: 600; }
+  .grand-total .val {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: #fff;
+  }
+
   /* ============ RESULT PANEL ============ */
   .result-card {
     background: linear-gradient(160deg, #1a1a1a 0%, #2a2a2a 100%);
@@ -816,6 +944,31 @@
           </div>
           <p class="inline-hint">Upfront unlocks much deeper multi-year discounts. Installments get a smaller bump because the customer still benefits from a locked-in price.</p>
         </div>
+
+        <!-- ===================== ENTERPRISE ADD-ONS ===================== -->
+        <div class="section-divider">Enterprise add-ons</div>
+
+        <p class="addon-intro">
+          Flat annual fees charged on top of the per-seat plan. They do not change the Essential or Professional
+          per-user price, and they are not discounted by volume, geography, or agreement length.
+        </p>
+
+        <div class="addon-list" id="addons"></div>
+
+        <div class="addon-static" style="margin-top:8px">
+          <div class="addon-body">
+            <span class="addon-name">
+              <span>Data residency controls</span>
+              <span class="addon-price">Scoped by Jan</span>
+            </span>
+            <span class="addon-hint">Hosting in a specific Azure region. Priced per deal, not from this list.</span>
+          </div>
+        </div>
+
+        <p class="inline-hint">
+          White-glove implementation, expert advisory hours, hands-on integration support, and managed Power BI
+          dashboards are billed by the hours the team spends with the customer. Scope them with Jan before quoting.
+        </p>
       </div>
 
       <!-- ===================== RESULT ===================== -->
@@ -1002,6 +1155,54 @@ function countrySalary(code) {
 
 const NONPROFIT_DISCOUNT = 0.15;
 
+/* =========================================================================
+   ENTERPRISE ADD-ONS
+   =========================================================================
+   Flat annual fees, quoted ON TOP of the per-seat Essential/Professional
+   price. They are deliberately kept outside the discount engine: volume,
+   geography, non-profit, multi-year, and the Pro bonus never touch them,
+   because they represent real infrastructure and engineering cost rather
+   than software margin.
+
+   `requires` encodes a hard dependency. Customer-managed encryption keys
+   need a dedicated instance to hold them, so that row stays locked until
+   dedicated infrastructure is selected, and unchecking infrastructure
+   clears the key add-on automatically.
+
+   Items intentionally NOT on this list:
+     - Data residency controls: scoped per deal (shown as a static row).
+     - White-glove implementation, expert advisory hours, hands-on
+       integration support, managed Power BI dashboards: priced by the
+       hours the team commits, so they never get a fixed checkbox price. */
+const ENTERPRISE_ADDONS = [
+  {
+    id: 'infra',
+    name: 'Dedicated cloud infrastructure',
+    price: 25000,
+    hint: 'Fully isolated instance with its own database and application layer. No shared components with other tenants.'
+  },
+  {
+    id: 'cmk',
+    name: 'Customer-managed encryption keys',
+    price: 5000,
+    hint: 'Customer brings their own keys and can rotate, revoke, or audit them through their existing key management service.',
+    requires: 'infra',
+    requiresLabel: 'Requires dedicated cloud infrastructure'
+  },
+  {
+    id: 'retention',
+    name: 'Custom retention & deletion policies',
+    price: 4000,
+    hint: 'Granular retention rules per module, record, or employee, with automated deletion workflows for GDPR and CCPA.'
+  },
+  {
+    id: 'security',
+    name: 'Advanced security & logging',
+    price: 6000,
+    hint: 'IP allowlisting, role-based permissions, and audit logs streamed to Splunk, Datadog, Sentinel, or any SIEM.'
+  }
+];
+
 /* Multi-year discounts — TWO completely different curves.
    - Installments: small bumps (still locked-in pricing, so worth something)
    - Upfront: aggressive, because cash up-front is enormously valuable for SaaS
@@ -1024,6 +1225,14 @@ const state = {
   users: 100,
   country: 'US',
   nonprofit: false,
+
+  // Enterprise add-on selections, keyed by ENTERPRISE_ADDONS id.
+  addons: {
+    infra:     false,
+    cmk:       false,
+    retention: false,
+    security:  false
+  },
 
   // Rep-controlled discount reduction. Calculator returns the MAXIMUM discount
   // we can offer (the floor price). Rep can reduce the discount by clicking
@@ -1159,6 +1368,43 @@ function calculate(s) {
 }
 
 /* =========================================================================
+   ENTERPRISE ADD-ON ENGINE
+   =========================================================================
+   Add-on fees are annual and never discounted. On a multi-year annual
+   agreement they recur each year of the term, so the contract total is
+   simply annual × years. On monthly billing there is no committed term,
+   so we quote the annual figure only. */
+
+function addonTermYears() {
+  if (state.billing !== 'annual') return 1;
+  return Math.max(1, Math.min(5, parseInt(state.termYears) || 1));
+}
+
+function calculateAddons() {
+  const selected = ENTERPRISE_ADDONS.filter(a => state.addons[a.id]);
+  const annual   = selected.reduce((sum, a) => sum + a.price, 0);
+  const years    = addonTermYears();
+  return {
+    selected,
+    annual,
+    years,
+    contractTotal: annual * years,
+    any: selected.length > 0
+  };
+}
+
+/* Enforce the dependency rules declared on ENTERPRISE_ADDONS.
+   Called before every render so state can never hold an illegal combination,
+   whatever order the rep clicks things in. */
+function normalizeAddons() {
+  ENTERPRISE_ADDONS.forEach(a => {
+    if (a.requires && !state.addons[a.requires]) {
+      state.addons[a.id] = false;
+    }
+  });
+}
+
+/* =========================================================================
    RENDER
    ========================================================================= */
 const fmt = (n) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1184,8 +1430,75 @@ function updateFieldVisibility() {
   }
 }
 
+/* Sync the add-on checkboxes with state: checked marks, locked rows for
+   unmet dependencies, disabled inputs so a locked row cannot be clicked. */
+function updateAddonUI() {
+  ENTERPRISE_ADDONS.forEach(a => {
+    const row = document.getElementById('addonRow-' + a.id);
+    if (!row) return;
+    const cb     = row.querySelector('input[type="checkbox"]');
+    const locked = !!(a.requires && !state.addons[a.requires]);
+
+    cb.checked  = !!state.addons[a.id];
+    cb.disabled = locked;
+    row.classList.toggle('locked', locked);
+    row.classList.toggle('checked', !!state.addons[a.id]);
+  });
+}
+
+/* Add-on block rendered inside the dark result card. Returns '' when nothing
+   is selected, so the quote panel stays clean for standard deals. */
+function addonResultBlock(platformContractTotal) {
+  const a = calculateAddons();
+  if (!a.any) return '';
+
+  const rows = a.selected.map(x =>
+    `<div class="breakdown-row">
+       <span class="breakdown-label">${x.name}</span>
+       <span class="breakdown-value">$${fmtInt(x.price)} / year</span>
+     </div>`
+  ).join('');
+
+  const perYearRow = `
+    <div class="breakdown-row" style="border-top:1px solid rgba(255,255,255,0.12);padding-top:10px;margin-top:2px">
+      <span class="breakdown-label" style="font-weight:600;color:#f0ece4">Add-ons per year</span>
+      <span class="breakdown-value" style="font-weight:600">$${fmtInt(a.annual)}</span>
+    </div>`;
+
+  const termRow = a.years > 1
+    ? `<div class="breakdown-row">
+         <span class="breakdown-label">Add-ons over the ${a.years}-year term</span>
+         <span class="breakdown-value">$${fmtInt(a.contractTotal)}</span>
+       </div>`
+    : '';
+
+  const grandTotal = (platformContractTotal != null)
+    ? `<div class="grand-total">
+         <span class="lbl">Total contract value, platform plus add-ons</span>
+         <span class="val">$${fmtInt(platformContractTotal + a.contractTotal)}</span>
+       </div>`
+    : '';
+
+  return `
+    <div class="addon-summary">
+      <div class="breakdown">
+        <div class="breakdown-row" style="border-bottom:1px solid rgba(255,255,255,0.12);padding-bottom:10px;margin-bottom:2px">
+          <span class="breakdown-label" style="font-weight:600;color:#f0ece4">Enterprise add-ons</span>
+          <span class="breakdown-value muted">Not discounted</span>
+        </div>
+        ${rows}
+        ${perYearRow}
+        ${termRow}
+      </div>
+      ${grandTotal}
+    </div>`;
+}
+
 function render() {
   updateFieldVisibility();
+  normalizeAddons();
+  updateAddonUI();
+
   const r = calculate(state);
   const el = document.getElementById('result');
 
@@ -1193,10 +1506,12 @@ function render() {
     el.innerHTML = `
       <div class="enterprise-callout">
         <strong>Enterprise pricing — talk to Jan</strong>
-        <p>Enterprise deals include dedicated cloud infrastructure, customer-managed encryption keys, data residency controls, white-glove implementation, and bespoke commercial terms. Pricing is not calculated here.</p>
+        <p>Enterprise deals include dedicated cloud infrastructure, customer-managed encryption keys, data residency controls, white-glove implementation, and bespoke commercial terms. Per-seat pricing is not calculated here.</p>
         <p style="margin-top:12px;">Forward this deal to <a href="mailto:jan@teamflect.com">jan@teamflect.com</a> with the prospect's user count, country, module scope, and desired agreement length.</p>
       </div>
+      ${addonResultBlock(null)}
     `;
+    renderROI();
     return;
   }
 
@@ -1281,6 +1596,8 @@ function render() {
       </div>
     </div>
 
+    ${addonResultBlock(r.discountedTotal)}
+
     <div class="actions">
       <button class="btn" id="copyBtn">Copy quote</button>
       <button class="btn" id="copyTiersBtn">Copy tiered-pricing table</button>
@@ -1339,8 +1656,9 @@ function render() {
      pb   = 12 / roi                                         (payback in months)
 
    For lc, the live site uses list price (12 × emp × $7 or $11). We instead pull
-   the *discounted* annual cost from the price calculator above, so the rep can
-   show the customer the ROI of the deal they're actually being offered. */
+   the *discounted* annual cost from the price calculator above, plus any
+   Enterprise add-on fees, so the rep shows the ROI of the deal actually on
+   the table rather than a headline number the customer will never pay. */
 
 const ROI_EFFICIENCY = { essential: 0.065, professional: 0.095 };
 
@@ -1364,18 +1682,23 @@ function calculateROI() {
   // For monthly billing: cost × 12. For 1yr: discountedTotal. For multi-year installments: perYearAmount.
   // For multi-year upfront: amortized over the term (discountedTotal / termYears).
   const priceR = calculate(state);
-  let annualCost = 0;
+  let platformAnnual = 0;
   if (!priceR.enterprise) {
     if (state.billing === 'monthly') {
-      annualCost = priceR.discountedTotal * 12;
+      platformAnnual = priceR.discountedTotal * 12;
     } else if (state.termYears === 1) {
-      annualCost = priceR.discountedTotal;
+      platformAnnual = priceR.discountedTotal;
     } else if (state.payment === 'installments') {
-      annualCost = priceR.perYearAmount;
+      platformAnnual = priceR.perYearAmount;
     } else { // upfront multi-year
-      annualCost = priceR.discountedTotal / state.termYears;
+      platformAnnual = priceR.discountedTotal / state.termYears;
     }
   }
+
+  // Enterprise add-ons are a real recurring line on the invoice, so they
+  // count against the return the same way the per-seat cost does.
+  const addonAnnual = calculateAddons().annual;
+  const annualCost  = platformAnnual + addonAnnual;
 
   const netAnnual  = totalSavings - annualCost;
   const roiMult    = annualCost > 0 ? (totalSavings - annualCost) / annualCost : 0;
@@ -1387,6 +1710,7 @@ function calculateROI() {
     users, salary, attr, opsHrs, plan,
     hourly, hoursSaved,
     timeSavings, retSavings, totalSavings,
+    platformAnnual, addonAnnual,
     annualCost, netAnnual, roiMult, roiPct, paybackMo
   };
 }
@@ -1424,6 +1748,13 @@ function renderROI() {
         ? '< 1 month payback'
         : `${r.paybackMo.toFixed(1)} months payback`);
 
+  const addonCostRow = r.addonAnnual > 0
+    ? `<div class="roi-row subtract">
+         <span class="lbl">Enterprise add-ons (annual)</span>
+         <span class="val">−$${fmtInt(r.addonAnnual)}</span>
+       </div>`
+    : '';
+
   el.innerHTML = `
     <div class="roi-headline">
       <div>
@@ -1443,9 +1774,10 @@ function renderROI() {
         <span class="val">+$${fmtInt(r.retSavings)}</span>
       </div>
       <div class="roi-row subtract">
-        <span class="lbl">Teamflect annual cost</span>
-        <span class="val">−$${fmtInt(r.annualCost)}</span>
+        <span class="lbl">Teamflect annual cost${r.addonAnnual > 0 ? ' (per-seat)' : ''}</span>
+        <span class="val">−$${fmtInt(r.platformAnnual)}</span>
       </div>
+      ${addonCostRow}
       <div class="roi-row total">
         <span class="lbl">Net annual benefit</span>
         <span class="val">${r.netAnnual >= 0 ? '+' : '−'}$${fmtInt(Math.abs(r.netAnnual))}</span>
@@ -1516,7 +1848,10 @@ function roiText(r) {
   }
 
   // ===== Inputs sentence =====
-  const inputsLine = `These numbers are based on ${fmtInt(r.users)} employees in ${countryName}, an average annual salary of $${fmtInt(r.salary)}, an annual attrition rate of ${r.attr}%, and about ${r.opsHrs} hour${r.opsHrs === 1 ? '' : 's'} per employee per week spent on HR admin.`;
+  const addonNote = r.addonAnnual > 0
+    ? ` The annual cost also includes $${fmtInt(r.addonAnnual)} for the Enterprise infrastructure and security add-ons you asked about.`
+    : '';
+  const inputsLine = `These numbers are based on ${fmtInt(r.users)} employees in ${countryName}, an average annual salary of $${fmtInt(r.salary)}, an annual attrition rate of ${r.attr}%, and about ${r.opsHrs} hour${r.opsHrs === 1 ? '' : 's'} per employee per week spent on HR admin.${addonNote}`;
 
   // ===== Logic section — tight, one sentence per bucket =====
   const logicLeadPlain = `Here is the logic behind the calculation:`;
@@ -1643,6 +1978,26 @@ function quoteBlockHtml(planCode) {
   return `<u><b>${esc(quoteHeaderLine(r, planCode))}</b></u><br>${esc(quoteEquationLine(r))}`;
 }
 
+/* Enterprise add-on block for the shared quote. Returns null when nothing is
+   selected so the standard two-plan quote is unchanged for normal deals.
+   The add-ons sit outside the per-seat maths, so they get their own headed
+   block rather than being folded into the equation lines above. */
+function addonQuoteBlock() {
+  const a = calculateAddons();
+  if (!a.any) return null;
+
+  const header = 'Enterprise add-ons (added to either plan above)';
+  const lines  = a.selected.map(x => `${x.name}: $${fmtInt(x.price)} USD per year`);
+  const total  = a.years > 1
+    ? `Add-on total: $${fmtInt(a.annual)} USD per year ($${fmtInt(a.contractTotal)} USD over ${a.years} years)`
+    : `Add-on total: $${fmtInt(a.annual)} USD per year`;
+
+  return {
+    plain: `${header}\n${lines.map(l => `• ${l}`).join('\n')}\n${total}`,
+    html:  `<u><b>${header}</b></u><br>${lines.map(l => `• ${l}`).join('<br>')}<br>${total}`
+  };
+}
+
 /* Build the full plain-text quote: Essential first, blank line, Professional,
    blank line, expiration date.
    This is what goes onto the clipboard regardless of which plan the rep has
@@ -1677,18 +2032,22 @@ function quoteIncludesHtml() {
 }
 
 function quoteText() {
-  return `${quoteBlock('essential')}\n\n${quoteBlock('professional')}\n\n${quoteIncludesPlain()}\n\nExpiration date: ${quoteExpirationDate()}`;
+  const addons = addonQuoteBlock();
+  const addonPart = addons ? `\n\n${addons.plain}` : '';
+  return `${quoteBlock('essential')}\n\n${quoteBlock('professional')}${addonPart}\n\n${quoteIncludesPlain()}\n\nExpiration date: ${quoteExpirationDate()}`;
 }
 
 /* HTML version of the full two-plan quote, with both headers underlined and
    "Expiration date:" bolded (date itself stays non-bold). */
 function quoteHtml() {
+  const addons = addonQuoteBlock();
+  const addonPart = addons ? `${addons.html}\n<br><br>\n` : '';
   return `<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1a1a1a; line-height: 1.5;">
 ${quoteBlockHtml('essential')}
 <br><br>
 ${quoteBlockHtml('professional')}
 <br><br>
-${quoteIncludesHtml()}
+${addonPart}${quoteIncludesHtml()}
 <br><br>
 <b>Expiration date:</b> ${quoteExpirationDate()}
 </div>`;
@@ -1723,6 +2082,10 @@ function copyQuote() {
    shows the per-seat price at THAT tier's volume bracket, applying all
    other discounts (modules, country, non-profit, multi-year, Pro bonus)
    consistently so the only varying lever is volume.
+
+   Enterprise add-ons are deliberately absent from this table: they are flat
+   annual fees, so they do not move with seat count and would distort the
+   per-seat comparison the table exists to make.
    ========================================================================= */
 
 /* Graduated tier bands for the "Copy pricing tiers" output.
@@ -1832,6 +2195,16 @@ function pricingTiersText() {
   const monthlyTotal = currentRate * userCount;
   const annualTotal  = monthlyTotal * 12;
 
+  // Add-on note appended under the table when the deal carries Enterprise
+  // add-ons, so the seat schedule is never mistaken for the full price.
+  const addons = calculateAddons();
+  const addonNotePlain = addons.any
+    ? `\nEnterprise add-ons are quoted separately at $${fmtInt(addons.annual)} USD per year and are not affected by seat count.`
+    : '';
+  const addonNoteHtml = addons.any
+    ? `<p style="margin: 12px 0 0; font-size: 13px;">Enterprise add-ons are quoted separately at <b>$${fmtInt(addons.annual)} USD per year</b> and are not affected by seat count.</p>`
+    : '';
+
   // ===== Plain text version — column-aligned monospace =====
   const fmtCell = (s, w) => String(s).padEnd(w);
   const colW = { range: 14, perUser: 22, disc: 11 };
@@ -1853,7 +2226,7 @@ function pricingTiersText() {
     ? `\n* indicates the tier where your current quoted user count lands. You are already at the top volume tier — no further per-seat reductions are available above this count.`
     : `\n* indicates the tier where your current quoted user count lands. As your deployment grows past each threshold above, the per-seat price drops automatically across the entire order. Locking in seats now and expanding through the same agreement avoids re-quoting at higher per-seat rates later.`;
 
-  const plain = `${headline}\n\n${plainTable}\n${plainQuoteLine}\n${plainFootnote}`;
+  const plain = `${headline}\n\n${plainTable}\n${plainQuoteLine}${addonNotePlain}\n${plainFootnote}`;
 
   // ===== HTML version — real table for Outlook =====
   const th = 'padding: 8px 14px; text-align: left; background: #f0ece4; border: 1px solid #d4cfc3; font-weight: 600; font-size: 13px;';
@@ -1889,6 +2262,7 @@ function pricingTiersText() {
   <tbody>${htmlRows}</tbody>
 </table>
 <p style="margin: 16px 0 0;"><b>Your current quote:</b> ${fmtInt(userCount)} seats × $${fmt(currentRate)}/user/month = <b>$${fmtInt(monthlyTotal)}/month</b> ($${fmtInt(annualTotal)}/year)</p>
+${addonNoteHtml}
 <p style="margin: 12px 0 0; font-size: 13px;">${htmlFootnote}</p>
 </div>`;
 
@@ -1921,8 +2295,15 @@ function emailQuote(r) {
   // which specific plan the rep is asking him to discount further.
   // Mailto body is plain text only — newlines via \r\n for broadest client compatibility.
   const singlePlanBlock = quoteBlock(state.plan).replace(/\n/g, '\r\n');
+
+  // Add-ons ride along so Jan sees the full commercial picture, not just seats.
+  const addons = addonQuoteBlock();
+  const addonPart = addons
+    ? `\r\n\r\n` + addons.plain.replace(/\n/g, '\r\n')
+    : '';
+
   const intro = `Hi Jan,\r\n\r\nRequesting an additional discount on the following quote:\r\n\r\n`;
-  const body = encodeURIComponent(intro + singlePlanBlock + `\r\n\r\nThanks!`);
+  const body = encodeURIComponent(intro + singlePlanBlock + addonPart + `\r\n\r\nThanks!`);
 
   window.location.href = `mailto:jan@teamflect.com?cc=seha@teamflect.com&subject=${subject}&body=${body}`;
 }
@@ -1947,6 +2328,43 @@ function initCountrySelect() {
   sel.value = 'US';
 }
 
+/* Build the add-on checkbox rows from config, so adding a new Enterprise
+   line item only means adding an entry to ENTERPRISE_ADDONS. */
+function initAddons() {
+  const wrap = document.getElementById('addons');
+
+  wrap.innerHTML = ENTERPRISE_ADDONS.map(a => `
+    <label class="addon-row" id="addonRow-${a.id}">
+      <input type="checkbox" data-addon="${a.id}" />
+      <span class="addon-body">
+        <span class="addon-name">
+          <span>${a.name}</span>
+          <span class="addon-price">$${fmtInt(a.price)} / year</span>
+        </span>
+        <span class="addon-hint">${a.hint}</span>
+        ${a.requiresLabel ? `<span class="addon-req">${a.requiresLabel}</span>` : ''}
+      </span>
+    </label>
+  `).join('');
+
+  wrap.querySelectorAll('input[data-addon]').forEach(cb => {
+    cb.addEventListener('change', e => {
+      const id = e.target.dataset.addon;
+      state.addons[id] = e.target.checked;
+
+      // Turning a prerequisite off clears everything that depends on it.
+      // normalizeAddons() would catch this anyway, but doing it here keeps
+      // the state honest between the click and the next render.
+      if (!e.target.checked) {
+        ENTERPRISE_ADDONS
+          .filter(dep => dep.requires === id)
+          .forEach(dep => { state.addons[dep.id] = false; });
+      }
+      render();
+    });
+  });
+}
+
 function bindSegmentedGroup(id, key, parser) {
   const group = document.getElementById(id);
   group.querySelectorAll('.seg').forEach(btn => {
@@ -1961,6 +2379,7 @@ function bindSegmentedGroup(id, key, parser) {
 
 function init() {
   initCountrySelect();
+  initAddons();
   bindSegmentedGroup('modules', 'modules');
   bindSegmentedGroup('plan', 'plan');
   bindSegmentedGroup('billing', 'billing');
